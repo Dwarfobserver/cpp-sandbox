@@ -1,6 +1,14 @@
 
+/**
+ *  Fixed size block allocator.
+ *  Used to have fast allocation of continuous memory.
+ *  If more than one block must be allocated, the standard allocator is called.
+ */
+
+
 #include <memory>
 #include <vector>
+
 
 namespace impl_fs_alloc {
 
@@ -9,7 +17,7 @@ namespace impl_fs_alloc {
 	struct Chunk
 	{
 		char data[T_SIZE];
-		Chunk* next_chunk;
+		Chunk* pNext;
 	};
 
 	template <size_t T_SIZE, size_t ARRAY_SIZE>
@@ -41,9 +49,9 @@ namespace impl_fs_alloc {
 			chunks.emplace_back(array);
 
 			for (auto i = 0; i < ARRAY_SIZE - 1; ++i)
-				array[i].next_chunk = &array[i + 1];
+				array[i].pNext = &array[i + 1];
 
-			array[ARRAY_SIZE - 1].next_chunk = nullptr;
+			array[ARRAY_SIZE - 1].pNext = nullptr;
 			pFreeChunk = array;
 		}
 
@@ -53,7 +61,7 @@ namespace impl_fs_alloc {
 				addChunks();
 
 			chunk_t* pChunk = pFreeChunk;
-			pFreeChunk = pChunk->next_chunk;
+			pFreeChunk = pChunk->pNext;
 
 			return pChunk;
 		}
@@ -62,7 +70,7 @@ namespace impl_fs_alloc {
 		{
 			auto pChunk = static_cast<chunk_t*>(address);
 
-			pChunk->next_chunk = pFreeChunk;
+			pChunk->pNext = pFreeChunk;
 			pFreeChunk = pChunk;
 		}
 	};
@@ -71,7 +79,7 @@ namespace impl_fs_alloc {
 
 
 template<class T, size_t ARRAY_SIZE = 1024>
-class FixedSizeAllocator {
+class fs_alloc {
 public:
 	typedef T value_type;
 	typedef T* pointer;
@@ -83,11 +91,11 @@ public:
 
 	template<typename U>
 	struct rebind {
-		typedef FixedSizeAllocator<U, ARRAY_SIZE> other;
+		typedef fs_alloc<U, ARRAY_SIZE> other;
 	};
 	using alloc_t = impl_fs_alloc::Allocator<sizeof(T), ARRAY_SIZE>;
 
-	FixedSizeAllocator() = default;
+	fs_alloc() = default;
 
 	// allocation only for one block at the time
 
