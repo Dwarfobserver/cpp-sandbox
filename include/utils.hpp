@@ -4,8 +4,8 @@
 #include <bits/unique_ptr.h>
 
 
+/// Defines SC_CACHE_LINE_SIZE to use structures based on custom cache line size.
 // TODO Get std::hardware_destructive_interference_size
-
 #ifndef SC_CACHE_LINE_SIZE
 #define SC_CACHE_LINE_SIZE 64
 #endif
@@ -18,7 +18,7 @@ namespace sc::utils {
         std::unique_ptr<char[]> unalignedData;
         T* data;
 
-        T* allocate(int count, int alignment, bool endingPad);
+        T* allocate(size_t count, size_t alignment, bool endingPad);
 
         aligned_array() : data(nullptr) {}
         aligned_array(aligned_array && old) noexcept :
@@ -41,18 +41,14 @@ namespace sc::utils {
     // Implementation
 
     template<class T>
-    T* aligned_array<T>::allocate(int count, int alignment, bool endingPad) {
-        auto bytes = sizeof(T) * count;
-        auto shift = 0;
-        if (alignof(T) < alignment) {
-            shift = alignment - alignof(T);
+    T* aligned_array<T>::allocate(size_t count, size_t alignment, bool endingPad) {
+        if (alignof(T) > alignment) alignment = alignof(T);
 
-            if (endingPad) {
-                bytes += ((bytes + alignment - 1) / alignment) * alignment;
-            }
-        }
-        unalignedData = std::make_unique<char[]>(bytes + shift);
-        data = reinterpret_cast<T*>(unalignedData.get() + shift);
+        auto bytes = sizeof(T) * count + alignment * (1 + endingPad);
+
+        unalignedData = std::make_unique<char[]>(bytes);
+        auto shiftedPtr = ((reinterpret_cast<intptr_t>(unalignedData.get()) + alignment - 1) / alignment) * alignment;
+        data = reinterpret_cast<T*>(shiftedPtr);
         return data;
     }
 

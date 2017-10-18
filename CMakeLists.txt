@@ -12,6 +12,6 @@ set(SOURCE_FILES
 
         tests/catch.hpp
         tests/main.cpp
-        tests/test_spsc_queue.cpp)
+        tests/tests_spsc_queue.cpp)
 
 add_executable(Tests ${SOURCE_FILES})
