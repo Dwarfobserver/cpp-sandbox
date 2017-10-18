@@ -33,27 +33,30 @@ TEST_CASE("Test correct loop", "[spsc_queue]") {
     REQUIRE(sum == (intCount * (intCount - 1)) / 2);
 }
 
-static std::atomic_int movesCounter;
-static std::atomic_int dtorsCounter;
+namespace tests_spsc_queue {
+    static std::atomic_int movesCounter;
+    static std::atomic_int dtorsCounter;
 
-class Dummy {
-public:
-    Dummy() = default;
-    ~Dummy() {
-        dtorsCounter++;
-    }
-    Dummy(Dummy && old) noexcept {
-        movesCounter++;
-    }
-    Dummy& operator=(Dummy && old) noexcept {
-        movesCounter++;
-        return *this;
-    }
-    explicit Dummy(Dummy const& clone) = delete;
-    Dummy& operator=(Dummy const& clone) = delete;
-};
+    class Dummy {
+    public:
+        Dummy() = default;
+        ~Dummy() {
+            dtorsCounter++;
+        }
+        Dummy(Dummy && old) noexcept {
+            movesCounter++;
+        }
+        Dummy& operator=(Dummy && old) noexcept {
+            movesCounter++;
+            return *this;
+        }
+        explicit Dummy(Dummy const& clone) = delete;
+        Dummy& operator=(Dummy const& clone) = delete;
+    };
+}
 
 TEST_CASE("Count moves & destructors", "[spsc_queue]") {
+    using namespace tests_spsc_queue;
     constexpr int dataCount(3);
 
     movesCounter = 0;
@@ -70,10 +73,13 @@ TEST_CASE("Count moves & destructors", "[spsc_queue]") {
     REQUIRE(dtorsCounter == dataCount * 2);
 }
 
-struct alignas(32) Aligned32 {};
-struct alignas(64) Aligned64 {};
+namespace tests_spsc_queue {
+    struct alignas(32) Aligned32 {};
+    struct alignas(64) Aligned64 {};
+}
 
 TEST_CASE("Data alignment", "[spsc_queue]") {
+    using namespace tests_spsc_queue;
     constexpr int dataCount(3);
 
     sc::spsc_queue<Aligned32> queue32(dataCount);

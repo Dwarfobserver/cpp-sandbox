@@ -1,15 +1,13 @@
 
-#ifndef SIDNEY_MPSC_QUEUE_HPP
-#define SIDNEY_MPSC_QUEUE_HPP
+#pragma once
 
-#include "utils.hpp"
+#include "aligned_array.hpp"
 #include <atomic>
 
 
 namespace sc {
 
-    /// Wait-free single producer single consumer queue
-    template<class T>
+    template<class T, template <class> class alloc_t = std::allocator>
     class spsc_queue {
     public:
         explicit spsc_queue(int _capacity);
@@ -36,7 +34,7 @@ namespace sc {
 
         // Aligned to not need to read other threads cache lines
         alignas(SC_CACHE_LINE_SIZE) const int capacity;
-        utils::aligned_array<T> ringBuffer;
+        aligned_array<T, alloc_t> ringBuffer;
 
         alignas(SC_CACHE_LINE_SIZE) int tail;
         alignas(SC_CACHE_LINE_SIZE) std::atomic_int head;
@@ -45,8 +43,8 @@ namespace sc {
     // ______________
     // Implementation
 
-    template<class T>
-    spsc_queue<T>::spsc_queue(int _capacity) :
+    template<class T, template <class> class alloc_t>
+    spsc_queue<T, alloc_t>::spsc_queue(int _capacity) :
             capacity(_capacity + 1), tail(0), head(0) {
         static_assert(alignof(T) <= SC_CACHE_LINE_SIZE, "T alignment must not be superior to cache line size");
         static_assert(sizeof(ringBuffer) + sizeof(capacity) <= SC_CACHE_LINE_SIZE);
@@ -57,22 +55,22 @@ namespace sc {
         ringBuffer.allocate(static_cast<size_t>(capacity), SC_CACHE_LINE_SIZE, true);
     }
 
-    template<class T>
-    spsc_queue<T>::~spsc_queue() {
+    template<class T, template <class> class alloc_t>
+    spsc_queue<T, alloc_t>::~spsc_queue() {
         // Call stored t's destructors
         consume_all([](T &&) {});
     }
 
-    template<class T> template <class...Args>
-    void spsc_queue<T>::emplace(Args &&... args) {
+    template<class T, template <class> class alloc_t> template <class...Args>
+    void spsc_queue<T, alloc_t>::emplace(Args &&... args) {
         static_assert(std::is_constructible_v<T, Args...>);
 
         const auto i = head.load(std::memory_order_consume);
         const auto i2 = i == capacity - 1 ? 0 : i + 1;
 
         #ifndef NDEBUG
-        std::atomic_thread_fence(std::memory_order_seq_cst);
         if (i2 == tail) throw std::length_error{"The producer has overflowed the spsc_queue."};
+        std::atomic_thread_fence(std::memory_order_seq_cst);
         #endif
 
         new (ringBuffer.data + i) T(std::forward<Args>(args)...);
@@ -80,18 +78,18 @@ namespace sc {
         head.store(i2, std::memory_order_release);
     }
 
-    template<class T>
-    void spsc_queue<T>::push(T &&moved) {
+    template<class T, template <class> class alloc_t>
+    void spsc_queue<T, alloc_t>::push(T &&moved) {
         emplace(std::move(moved));
     }
 
-    template<class T>
-    void spsc_queue<T>::push(T const &clone) {
+    template<class T, template <class> class alloc_t>
+    void spsc_queue<T, alloc_t>::push(T const &clone) {
         emplace(clone);
     }
 
-    template<class T> template <class F>
-    int spsc_queue<T>::consume_all(F &&f) {
+    template<class T, template <class> class alloc_t> template <class F>
+    int spsc_queue<T, alloc_t>::consume_all(F &&f) {
         const auto data = ringBuffer.data;
         const auto iMin = tail;
         // consume_range(iMin -> capacity) isn't dependant
@@ -110,8 +108,8 @@ namespace sc {
         return count;
     }
 
-    template<class T> template <class F>
-    void spsc_queue<T>::consume_range(T *begin, T *end, F &&f) {
+    template<class T, template <class> class alloc_t> template <class F>
+    void spsc_queue<T, alloc_t>::consume_range(T *begin, T *end, F &&f) {
         while (begin != end) {
             f(std::move(*begin));
             begin->~T();
@@ -120,5 +118,3 @@ namespace sc {
     }
 
 } // End of ::sc
-
-#endif
