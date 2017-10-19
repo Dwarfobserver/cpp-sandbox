@@ -12,6 +12,6 @@ set(SOURCE_FILES
 
         tests/catch.hpp
         tests/main.cpp
-        tests/tests_spsc_queue.cpp include/fwd_list.hpp include/aligned_array.hpp)
+        tests/tests_spsc_queue.cpp include/fwd_list.hpp include/aligned_array.hpp tests/tests_fwd_list.cpp)
 
 add_executable(Tests ${SOURCE_FILES})

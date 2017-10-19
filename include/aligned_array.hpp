@@ -1,7 +1,8 @@
 
 #pragma once
 
-#include "utils.hpp"
+#include <utils.hpp>
+
 #include <bits/allocator.h>
 #include <cstddef>
 
@@ -11,8 +12,6 @@ namespace sc {
     /// Allocates an array aligned in memory, without constructing values (use placement new).
     template<class T, template <class> class alloc_t = std::allocator>
     struct aligned_array {
-        using alloc_bytes = alloc_t<std::byte>;
-
         size_t size;
         std::byte* unalignedData;
         T* data;
@@ -38,15 +37,15 @@ namespace sc {
     template<class T, template <class> class alloc_t>
     T* aligned_array<T, alloc_t>::allocate(size_t count, size_t alignment, bool endingPad) {
         if (unalignedData != nullptr) {
-            alloc_bytes().deallocate(unalignedData, size);
+            alloc_t<std::byte>().deallocate(unalignedData, size);
         }
 
         if (alignof(T) > alignment) alignment = alignof(T);
         size = sizeof(T) * count + alignment * (1 + endingPad);
 
-        unalignedData = alloc_bytes().allocate(size);
+        unalignedData = alloc_t<std::byte>().allocate(size);
 
-        auto shiftedPtr = ((reinterpret_cast<intptr_t>(unalignedData) + alignment - 1) / alignment) * alignment;
+        const auto shiftedPtr = ((reinterpret_cast<intptr_t>(unalignedData) + alignment - 1) / alignment) * alignment;
         data = reinterpret_cast<T*>(shiftedPtr);
         return data;
     }
@@ -58,7 +57,7 @@ namespace sc {
 
     template<class T, template <class> class alloc_t>
     aligned_array<T, alloc_t>::~aligned_array() noexcept {
-        alloc_bytes().deallocate(unalignedData, size);
+        alloc_t<std::byte>().deallocate(unalignedData, size);
     }
 
     template<class T, template <class> class alloc_t>
