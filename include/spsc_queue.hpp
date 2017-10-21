@@ -12,14 +12,15 @@ namespace sc {
     class spsc_queue {
     public:
         explicit spsc_queue(int _capacity);
-        ~spsc_queue();
+        ~spsc_queue() noexcept;
+
+        int size() const noexcept;
 
         template<class...Args>
         void emplace(Args &&...args);
 
-        void push(T&& moved);
-
-        void push(T const &clone);
+        void push(T&& moved) { emplace(std::move(moved)); }
+        void push(T const &clone) { emplace(const_cast<T&>(clone)); }
 
         // Apply a function which consumes each available data and returns the number of executions
         template<class F>
@@ -48,7 +49,6 @@ namespace sc {
     spsc_queue<T, alloc_t>::spsc_queue(int _capacity) :
             capacity(_capacity + 1), tail(0), head(0) {
         static_assert(alignof(T) <= SC_CACHE_LINE_SIZE, "T alignment must not be superior to cache line size");
-        static_assert(sizeof(ringBuffer) + sizeof(capacity) <= SC_CACHE_LINE_SIZE);
         if (_capacity < 1) {
             throw std::invalid_argument{"spsc_queue capacity must be >= 1."};
         }
@@ -57,9 +57,15 @@ namespace sc {
     }
 
     template<class T, template <class> class alloc_t>
-    spsc_queue<T, alloc_t>::~spsc_queue() {
+    spsc_queue<T, alloc_t>::~spsc_queue() noexcept {
         // Call stored t's destructors
         consume_all([](T &&) {});
+    }
+
+    template<class T, template <class> class alloc_t>
+    int spsc_queue<T, alloc_t>::size() const noexcept {
+        const auto _head = head.load(std::memory_order_consume);
+        return _head - tail + capacity * (_head < tail);
     }
 
     template<class T, template <class> class alloc_t> template <class...Args>
@@ -70,23 +76,13 @@ namespace sc {
         const auto i2 = i == capacity - 1 ? 0 : i + 1;
 
         #ifndef NDEBUG
-        if (i2 == tail) throw std::length_error{"The producer has overflowed the spsc_queue."};
+        if (i2 == tail) throw std::runtime_error{"The producer has overflowed the spsc_queue."};
         std::atomic_thread_fence(std::memory_order_seq_cst);
         #endif
 
         new (ringBuffer.data + i) T(std::forward<Args>(args)...);
 
         head.store(i2, std::memory_order_release);
-    }
-
-    template<class T, template <class> class alloc_t>
-    void spsc_queue<T, alloc_t>::push(T &&moved) {
-        emplace(std::move(moved));
-    }
-
-    template<class T, template <class> class alloc_t>
-    void spsc_queue<T, alloc_t>::push(T const &clone) {
-        emplace(clone);
     }
 
     template<class T, template <class> class alloc_t> template <class F>

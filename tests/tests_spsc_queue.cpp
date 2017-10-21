@@ -5,7 +5,7 @@
 #include <thread>
 
 
-TEST_CASE("Test correct loop", "[spsc_queue]") {
+TEST_CASE("spsc_queue capacity and size", "[spsc_queue]") {
     constexpr int intCount(10);
     constexpr int queueSize(4);
 
@@ -19,6 +19,7 @@ TEST_CASE("Test correct loop", "[spsc_queue]") {
         queue.push(next++);
         pushes++;
         if (pushes == queueSize) {
+            REQUIRE(queue.size() == queueSize);
             pushes = 0;
             treated += queue.consume_all([&sum](int val) {
                 sum += val;
@@ -55,7 +56,7 @@ namespace tests_spsc_queue {
     };
 }
 
-TEST_CASE("Count moves & destructors", "[spsc_queue]") {
+TEST_CASE("spsc_queue moves & destructors", "[spsc_queue]") {
     using namespace tests_spsc_queue;
     constexpr int dataCount(3);
 
@@ -78,7 +79,7 @@ namespace tests_spsc_queue {
     struct alignas(64) Aligned64 {};
 }
 
-TEST_CASE("Data alignment", "[spsc_queue]") {
+TEST_CASE("spsc_queue data alignment", "[spsc_queue]") {
     using namespace tests_spsc_queue;
     constexpr int dataCount(3);
 
@@ -98,9 +99,11 @@ TEST_CASE("Data alignment", "[spsc_queue]") {
     queue64.consume_all([&](Aligned64 &&val) { test(val, 64); });
 }
 
-TEST_CASE("Heavy test", "[spsc_queue]") {
+TEST_CASE("spsc_queue concurrence", "[spsc_queue]") {
     constexpr int dataCount(10'000);
     using data_t = std::array<int, 32>;
+
+    // To test better atomic ops, should use N threads > std::thread::hardware_concurrency() (some go to sleep)
 
     sc::spsc_queue<data_t> queue(dataCount / 2);
     std::atomic_int sum(0);

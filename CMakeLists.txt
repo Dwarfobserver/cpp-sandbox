@@ -8,10 +8,13 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 set(SOURCE_FILES
         include/utils.hpp
         include/spsc_queue.hpp
-        include/old_fs_alloc.hpp
+        include/aligned_array.hpp
+        include/transactional_map.hpp
+
+        deprecated/fwd_list.hpp
 
         tests/catch.hpp
         tests/main.cpp
-        tests/tests_spsc_queue.cpp include/fwd_list.hpp include/aligned_array.hpp tests/tests_fwd_list.cpp)
+        tests/tests_spsc_queue.cpp tests/tests_transactional_map.cpp)
 
 add_executable(Tests ${SOURCE_FILES})
