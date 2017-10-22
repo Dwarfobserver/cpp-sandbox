@@ -7,13 +7,10 @@
 
 
 TEST_CASE("fluent_collections basics", "[fluent_collections]") {
-    sc::fluent<std::deque, int> deque;
+    const std::deque<int> original {0, 1, 2, 3, 4, 5};
+    const sc::fluent<std::deque, int> deque(original);
 
-    for (int i = 0; i < 6; ++i) {
-        deque.push_back(i);
-    }
-
-    auto result = deque
+    const auto result = deque
             .filter([] (auto val) { return val >= 2; })
             .apply( [] (auto& val) { val /= 2; })
             .reduce([] (auto v1, auto v2) { return v1 + v2; });
@@ -22,10 +19,10 @@ TEST_CASE("fluent_collections basics", "[fluent_collections]") {
 }
 
 TEST_CASE("fluent_collections map", "[fluent_collections]") {
-    sc::fluent<std::set, int> set{ 0, 1, 2, 3 };
+    const sc::fluent<std::set, int> set{ 0, 1, 2, 3 };
 
-    auto result = set
-            .map(   [] (int val) -> std::string { return std::to_string(val); })
+    const auto result = set
+            .map(   [] (auto val) { return std::to_string(val); })
             .reduce([] (auto v1, auto v2) { return v1 + " " + v2; }, "numbers :");
 
     REQUIRE(result == "numbers : 0 1 2 3");

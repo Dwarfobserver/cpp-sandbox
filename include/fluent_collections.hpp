@@ -17,7 +17,7 @@ namespace sc {
         template <class...Args>
         explicit fluent(Args&&...args);
 
-        explicit fluent(std::initializer_list<T> list);
+        fluent(std::initializer_list<T> list);
 
         Collection<T> const& collection() const noexcept;
 
