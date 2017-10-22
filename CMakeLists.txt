@@ -15,6 +15,6 @@ set(SOURCE_FILES
 
         tests/catch.hpp
         tests/main.cpp
-        tests/tests_spsc_queue.cpp tests/tests_transactional_map.cpp include/fluent_collections.hpp tests/tests_fluent_collections.cpp)
+        tests/tests_spsc_queue.cpp tests/tests_transactional_map.cpp include/fluent_collections.hpp tests/tests_fluent_collections.cpp tests/tests_utils.cpp include/mpsc_queue.hpp tests/tests_spmc_queue.cpp)
 
 add_executable(Tests ${SOURCE_FILES})

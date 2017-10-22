@@ -17,6 +17,10 @@ namespace sc {
         template <class...Args>
         explicit fluent(Args&&...args);
 
+        explicit fluent(std::initializer_list<T> list);
+
+        Collection<T> const& collection() const noexcept;
+
         template <class F>
         fluent<Collection, T> apply(F&& f) const;
 
@@ -37,7 +41,15 @@ namespace sc {
     // Implementation
 
     template<template<class> class Collection, class T> template <class...Args>
-    fluent<Collection, T>::fluent(Args &&... args) : Collection<T>(std::forward<T>(args)...) {}
+    fluent<Collection, T>::fluent(Args &&... args) : Collection<T>(std::forward<Args>(args)...) {}
+
+    template<template<class> class Collection, class T>
+    fluent<Collection, T>::fluent(std::initializer_list<T> list) : Collection<T>(list) {}
+
+    template<template<class> class Collection, class T>
+    inline Collection<T> const& fluent<Collection, T>::collection() const noexcept {
+        return *static_cast<Collection<T> const * const>(this);
+    }
 
     template<template<class> class Collection, class T> template <class F>
     fluent<Collection, T> fluent<Collection, T>::apply(F&& f) const {
@@ -53,8 +65,8 @@ namespace sc {
     typename fluent<Collection, T>::template map_t<F> fluent<Collection, T>::map(F&& unaryOp) const {
         map_t<F> result;
         std::transform(
-                collection_type::begin(),
-                collection_type::end(),
+                collection_type::cbegin(),
+                collection_type::cend(),
                 std::inserter(result, result.end()),
                 unaryOp);
         return result;
@@ -64,8 +76,8 @@ namespace sc {
     fluent<Collection, T> fluent<Collection, T>::filter(F&& predicate) const {
         fluent<Collection, T> result;
         std::copy_if(
-                collection_type::begin(),
-                collection_type::end(),
+                collection_type::cbegin(),
+                collection_type::cend(),
                 std::inserter(result, result.end()),
                 predicate);
         return result;
@@ -73,20 +85,20 @@ namespace sc {
 
     template<template<class> class Collection, class T> template <class F>
     T fluent<Collection, T>::reduce(F&& binaryOp) const {
-        if (collection_type::begin() == collection_type::end())
+        if (collection_type::cbegin() == collection_type::cend())
             return T();
         return std::accumulate(
-                ++collection_type::begin(),
-                collection_type::end(),
-                *collection_type::begin(),
+                ++collection_type::cbegin(),
+                collection_type::cend(),
+                *collection_type::cbegin(),
                 binaryOp);
     }
 
     template<template<class> class Collection, class T> template <class F>
     T fluent<Collection, T>::reduce(F&& binaryOp, T const& first) const {
         return std::accumulate(
-                collection_type::begin(),
-                collection_type::end(),
+                collection_type::cbegin(),
+                collection_type::cend(),
                 first,
                 binaryOp);
     }

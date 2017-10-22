@@ -22,11 +22,7 @@ TEST_CASE("fluent_collections basics", "[fluent_collections]") {
 }
 
 TEST_CASE("fluent_collections map", "[fluent_collections]") {
-    sc::fluent<std::set, int> set;
-
-    for (int i = 0; i < 4; ++i) {
-        set.insert(i);
-    }
+    sc::fluent<std::set, int> set{ 0, 1, 2, 3 };
 
     auto result = set
             .map(   [] (int val) -> std::string { return std::to_string(val); })

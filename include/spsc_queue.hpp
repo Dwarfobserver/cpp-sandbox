@@ -14,13 +14,14 @@ namespace sc {
         explicit spsc_queue(int _capacity);
         ~spsc_queue() noexcept;
 
-        int size() const noexcept;
-
         template<class...Args>
         void emplace(Args &&...args);
 
         void push(T&& moved) { emplace(std::move(moved)); }
         void push(T const &clone) { emplace(const_cast<T&>(clone)); }
+
+        template <class ItBegin, class ItEnd>
+        void pushRange(ItBegin const& begin, ItEnd const& end);
 
         // Apply a function which consumes each available data and returns the number of executions
         template<class F>
@@ -62,12 +63,6 @@ namespace sc {
         consume_all([](T &&) {});
     }
 
-    template<class T, template <class> class alloc_t>
-    int spsc_queue<T, alloc_t>::size() const noexcept {
-        const auto _head = head.load(std::memory_order_consume);
-        return _head - tail + capacity * (_head < tail);
-    }
-
     template<class T, template <class> class alloc_t> template <class...Args>
     void spsc_queue<T, alloc_t>::emplace(Args &&... args) {
         static_assert(std::is_constructible_v<T, Args...>);
@@ -75,13 +70,33 @@ namespace sc {
         const auto i = head.load(std::memory_order_consume);
         const auto i2 = i == capacity - 1 ? 0 : i + 1;
 
-        #ifndef NDEBUG
+#ifndef NDEBUG
         if (i2 == tail) throw std::runtime_error{"The producer has overflowed the spsc_queue."};
         std::atomic_thread_fence(std::memory_order_seq_cst);
-        #endif
+#endif
 
         new (ringBuffer.data + i) T(std::forward<Args>(args)...);
 
+        head.store(i2, std::memory_order_release);
+    }
+
+    template<class T, template <class> class alloc_t> template<class ItBegin, class ItEnd>
+    void spsc_queue<T, alloc_t>::pushRange(ItBegin const& begin, ItEnd const& end) {
+
+        auto i = head.load(std::memory_order_consume);
+        auto i2 = i == capacity - 1 ? 0 : i + 1;
+
+        auto it = begin;
+        while (it != end) {
+#ifndef NDEBUG
+            if (i2 == tail) throw std::runtime_error{"The producer has overflowed the spsc_queue."};
+            std::atomic_thread_fence(std::memory_order_seq_cst);
+#endif
+            new (ringBuffer.data + i) T(*it);
+            ++it;
+            i = i2;
+            i2 = i == capacity - 1 ? 0 : i + 1;
+        }
         head.store(i2, std::memory_order_release);
     }
 

@@ -57,7 +57,8 @@ namespace sc {
 
     template<class T, template <class> class alloc_t>
     aligned_array<T, alloc_t>::~aligned_array() noexcept {
-        alloc_t<std::byte>().deallocate(unalignedData, size);
+        if (unalignedData != nullptr)
+            alloc_t<std::byte>().deallocate(unalignedData, size);
     }
 
     template<class T, template <class> class alloc_t>

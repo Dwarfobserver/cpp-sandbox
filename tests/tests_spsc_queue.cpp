@@ -19,7 +19,6 @@ TEST_CASE("spsc_queue capacity and size", "[spsc_queue]") {
         queue.push(next++);
         pushes++;
         if (pushes == queueSize) {
-            REQUIRE(queue.size() == queueSize);
             pushes = 0;
             treated += queue.consume_all([&sum](int val) {
                 sum += val;
