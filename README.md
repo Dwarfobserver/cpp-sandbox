@@ -6,7 +6,9 @@ It uses some C++17 features (some others are missing from mingw).
 
 Tests are run with Catch and can be used as a poor documentation.
 
- - utils : cache line size definition
+ - utils : Few useful or funny things :
+      - An operator used to safely chain calls of functions which can return an optional.
+      - An aligned allocator, used to fill cache lines where we want to store our false sharing sensible data.
 
  - spsc_queue : Wait-free single producer & single consumer queue.
                 This class do not check for overflow (it have a good chance to throw in debug mode).

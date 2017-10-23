@@ -46,4 +46,36 @@ namespace sc {
             else return {};
         }
     }
+
+    template<class T, template <class> class Allocator, int ALIGN>
+    class aligned_alloc {
+        struct alignas(ALIGN) chunk_t {
+        private:
+            std::byte bytes[ALIGN];
+        };
+    public:
+        using value_type = T;
+        using pointer = T*;
+        using const_pointer = T const*;
+        using reference = T &;
+        using const_reference = T const&;
+        using size_type = int;
+        using difference_type = ptrdiff_t;
+
+        template<typename U>
+        struct rebind {
+            using other = aligned_alloc<U, Allocator, ALIGN>;
+        };
+
+        pointer allocate(size_type nb) {
+            static_assert(alignof(T) <= ALIGN, "T must have a lower alignment constraint than the alignment required.");
+            return reinterpret_cast<T*>(Allocator<chunk_t>().allocate((sizeof(T) * nb + ALIGN - 1) / ALIGN));
+        }
+
+        void deallocate(pointer pChunk, size_type nb) {
+            static_assert(alignof(T) <= ALIGN, "T must have a lower alignment constraint than the alignment required.");
+            Allocator<chunk_t>().deallocate(reinterpret_cast<chunk_t*>(pChunk), (sizeof(T) * nb + ALIGN - 1) / ALIGN);
+        }
+    };
+
 }
