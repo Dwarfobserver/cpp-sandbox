@@ -31,8 +31,8 @@ TEST_CASE("utils optional_monad", "[utils]") {
     REQUIRE(mustStayTrue);
 }
 
-TEST_CASE("utils aligned_alloc", "[utils]") {
-    using alloc512_t = sc::aligned_alloc<int, std::allocator, 512>;
+TEST_CASE("utils aligned_allocator", "[utils]") {
+    using alloc512_t = sc::aligned_allocator<int, std::allocator, 512>;
 
     int* aligned512 = alloc512_t().allocate(1);
     alloc512_t().deallocate(aligned512, 1);

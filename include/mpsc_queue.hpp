@@ -11,7 +11,7 @@ namespace sc {
 
     template<class T, template<class> class Allocator = std::allocator>
     class mpsc_queue {
-        using buffer_alloc_t = sc::aligned_alloc<T, Allocator, SC_CACHE_LINE_SIZE>;
+        using buffer_alloc_t = sc::aligned_allocator<T, Allocator, SC_CACHE_LINE_SIZE>;
     public:
         explicit mpsc_queue(int _capacity);
         ~mpsc_queue() noexcept;

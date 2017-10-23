@@ -10,7 +10,7 @@ namespace sc {
 
     template<class T, template <class> class Allocator = std::allocator>
     class spsc_queue {
-        using buffer_alloc_t = sc::aligned_alloc<T, Allocator, SC_CACHE_LINE_SIZE>;
+        using buffer_alloc_t = sc::aligned_allocator<T, Allocator, SC_CACHE_LINE_SIZE>;
     public:
         explicit spsc_queue(int _capacity);
         ~spsc_queue() noexcept;

@@ -48,7 +48,7 @@ namespace sc {
     }
 
     template<class T, template <class> class Allocator, int ALIGN>
-    class aligned_alloc {
+    class aligned_allocator {
         struct alignas(ALIGN) chunk_t {
         private:
             std::byte bytes[ALIGN];
@@ -64,7 +64,7 @@ namespace sc {
 
         template<typename U>
         struct rebind {
-            using other = aligned_alloc<U, Allocator, ALIGN>;
+            using other = aligned_allocator<U, Allocator, ALIGN>;
         };
 
         pointer allocate(size_type nb) {
