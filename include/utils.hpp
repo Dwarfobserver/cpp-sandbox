@@ -78,4 +78,8 @@ namespace sc {
         }
     };
 
+    template <class Collection, class T, size_t Shift, bool Const, bool Reverse>
+    class pointer_iterator {
+        friend Collection;
+    };
 }

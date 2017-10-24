@@ -33,9 +33,9 @@ TEST_CASE("spsc_queue capacity and size", "[spsc_queue]") {
     REQUIRE(sum == (intCount * (intCount - 1)) / 2);
 }
 
-namespace tests_spsc_queue {
-    static std::atomic_int movesCounter;
-    static std::atomic_int dtorsCounter;
+namespace {
+    std::atomic_int movesCounter;
+    std::atomic_int dtorsCounter;
 
     class Dummy {
     public:
@@ -56,7 +56,6 @@ namespace tests_spsc_queue {
 }
 
 TEST_CASE("spsc_queue moves & destructors", "[spsc_queue]") {
-    using namespace tests_spsc_queue;
     constexpr int dataCount(3);
 
     movesCounter = 0;
@@ -73,13 +72,12 @@ TEST_CASE("spsc_queue moves & destructors", "[spsc_queue]") {
     REQUIRE(dtorsCounter == dataCount * 2);
 }
 
-namespace tests_spsc_queue {
+namespace {
     struct alignas(32) Aligned32 {};
     struct alignas(64) Aligned64 {};
 }
 
 TEST_CASE("spsc_queue data alignment", "[spsc_queue]") {
-    using namespace tests_spsc_queue;
     constexpr int dataCount(3);
 
     sc::spsc_queue<Aligned32> queue32(dataCount);

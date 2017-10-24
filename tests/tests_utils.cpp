@@ -34,8 +34,8 @@ TEST_CASE("utils optional_monad", "[utils]") {
 TEST_CASE("utils aligned_allocator", "[utils]") {
     using alloc512_t = sc::aligned_allocator<int, std::allocator, 512>;
 
-    int* aligned512 = alloc512_t().allocate(1);
-    alloc512_t().deallocate(aligned512, 1);
+    int* aligned512 = alloc512_t().allocate(10);
+    alloc512_t().deallocate(aligned512, 10);
 
     REQUIRE(reinterpret_cast<intptr_t>(aligned512) % 512 == 0);
 }

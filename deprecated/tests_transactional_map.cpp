@@ -1,7 +1,7 @@
 
-#include "catch.hpp"
+#include "../tests/catch.hpp"
 
-#include <transactional_map.hpp>
+#include "transactional_map.hpp"
 #include <thread>
 
 /*
