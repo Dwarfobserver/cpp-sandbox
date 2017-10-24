@@ -5,6 +5,7 @@
 #include <tuple>
 #include <functional>
 #include <cassert>
+#include "utils.hpp"
 
 
 namespace sc {
@@ -13,9 +14,17 @@ namespace sc {
     class slot_map {
         class data_t;
     public:
+        using iterator = sc::pointer_iterator<slot_map<T, Allocator>, T, sizeof(T) + sizeof(int)>;
+
         slot_map();
 
         int size() const noexcept;
+
+        T& operator[](int id) noexcept;
+        T const& operator[](int id) const noexcept;
+
+        iterator begin() noexcept;
+        iterator end() noexcept;
 
         void reserve(int capacity);
 
@@ -25,9 +34,6 @@ namespace sc {
         [[nodiscard]] int emplace(Args &&...args);
 
         void erase(int id) noexcept;
-
-        T& operator[](int id) noexcept;
-        T const& operator[](int id) const noexcept;
     private:
         std::vector<data_t, Allocator<T>> objects;
         std::vector<int, Allocator<T>> mapId;
@@ -62,6 +68,26 @@ namespace sc {
     template <class T, template <class> class Allocator>
     inline int slot_map<T, Allocator>::size() const noexcept {
         return _size;
+    }
+
+    template <class T, template <class> class Allocator>
+    inline T& slot_map<T, Allocator>::operator[](int id) noexcept {
+        return objects[mapId[id]].val;
+    }
+
+    template <class T, template <class> class Allocator>
+    inline T const& slot_map<T, Allocator>::operator[](int id) const noexcept {
+        return objects[mapId[id]].val;
+    }
+
+    template <class T, template <class> class Allocator>
+    inline typename slot_map<T, Allocator>::iterator slot_map<T, Allocator>::begin() noexcept {
+        return iterator(reinterpret_cast<T*>(objects.data()));
+    }
+
+    template <class T, template <class> class Allocator>
+    inline typename slot_map<T, Allocator>::iterator slot_map<T, Allocator>::end() noexcept {
+        return iterator(reinterpret_cast<T*>(objects.data() + _size));
     }
 
     template <class T, template <class> class Allocator>
@@ -106,16 +132,6 @@ namespace sc {
         objects.pop_back();
         --_size;
         freeId.push_back(id);
-    }
-
-    template <class T, template <class> class Allocator>
-    inline T& slot_map<T, Allocator>::operator[](int id) noexcept {
-        return objects[mapId[id]].val;
-    }
-
-    template <class T, template <class> class Allocator>
-    inline T const& slot_map<T, Allocator>::operator[](int id) const noexcept {
-        return objects[mapId[id]].val;
     }
 
 }

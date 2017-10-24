@@ -29,9 +29,14 @@ TEST_CASE("slot_map basics", "[slot_map]") {
         ids[i] = map.emplace(i * 10);
     }
 
+    int sum = 0;
     for (int i = 0; i < dataCount;++i) {
+        sum += values[i];
         REQUIRE(values[i] == map[ids[i]]);
     }
+    int sumCopy = 0;
+    for (auto val : map) sumCopy += val;
+    REQUIRE(sum == sumCopy);
 }
 
 namespace {

@@ -12,7 +12,6 @@
 
 
 namespace sc {
-
     template <class F>
     struct defer : F {
         ~defer() {
@@ -78,8 +77,40 @@ namespace sc {
         }
     };
 
-    template <class Collection, class T, size_t Shift, bool Const, bool Reverse>
+    template <class Collection, class T, size_t Padding> // TODO Suppress warning: arith with void*
     class pointer_iterator {
         friend Collection;
+        void* ptr;
+        explicit pointer_iterator(void* ptr) noexcept : ptr(ptr) {}
+    public:
+        using value_type = T;
+        using difference_type = ptrdiff_t;
+        using pointer = T*;
+        using reference = T&;
+        using iterator_category = std::random_access_iterator_tag;
+
+        pointer_iterator() noexcept : ptr(nullptr) {}
+        // Default copy, move ctors & dctor
+
+        T& operator*() const noexcept { return *reinterpret_cast<T*>(ptr); }
+        T* operator->() const noexcept { return reinterpret_cast<T*>(ptr); }
+        T& operator[](int shift) const noexcept { return *reinterpret_cast<T*>(ptr + Padding * shift); }
+
+        bool operator==(pointer_iterator it) const noexcept { return ptr == it.ptr; }
+        bool operator!=(pointer_iterator it) const noexcept { return ptr != it.ptr; }
+        bool operator>=(pointer_iterator it) const noexcept { return ptr >= it.ptr; }
+        bool operator<=(pointer_iterator it) const noexcept { return ptr <= it.ptr; }
+        bool operator>(pointer_iterator it) const noexcept { return ptr > it.ptr; }
+        bool operator<(pointer_iterator it) const noexcept { return ptr < it.ptr; }
+
+        pointer_iterator& operator++() noexcept { ptr += Padding; return *this; }
+        pointer_iterator& operator--() noexcept { ptr -= Padding; return *this; }
+        pointer_iterator  operator++(int) noexcept { const auto it = pointer_iterator(ptr); ptr += Padding; return it; }
+        pointer_iterator  operator--(int) noexcept { const auto it = pointer_iterator(ptr); ptr -= Padding; return it; }
+        pointer_iterator& operator+=(int shift) noexcept { ptr += Padding * shift; return *this; }
+        pointer_iterator& operator-=(int shift) noexcept { ptr -= Padding * shift; return *this; }
+        pointer_iterator  operator+(int shift) const noexcept { return pointer_iterator(ptr + Padding * shift); }
+        pointer_iterator  operator-(int shift) const noexcept { return pointer_iterator(ptr - Padding * shift); }
     };
+
 }
