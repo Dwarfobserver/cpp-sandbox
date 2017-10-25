@@ -10,6 +10,8 @@ Tests are run with Catch and can be used as a poor documentation.
       - An operator used to safely chain calls of functions which can return an optional.
       - An aligned allocator, used to fill cache lines where we want to store our false sharing sensible data.
       - A pointer iterator (with specified padding), usable by any collection with random access.
+      
+ - block_allocator : An fast allocator for one object at a time, with static fixed allocation.
 
  - spsc_queue : Wait-free single producer & single consumer queue.
                 This class do not check for overflow (it have a good chance to throw in debug mode).
@@ -19,6 +21,8 @@ Tests are run with Catch and can be used as a poor documentation.
 
  - fluent_collections : Functional-style wrapper of "collections", which are template classes with functions begin(),
                         end() and insert(iterator) that behave gently.
+
+ - lazy_ranges : On progress - A better version of fluent_collections, with better performances and lazy evaluation.
 
  - slot_map : A structure which can add and remove elements from their id in O(1), and store them in contiguous memory.
               It is build upon std::vector.
