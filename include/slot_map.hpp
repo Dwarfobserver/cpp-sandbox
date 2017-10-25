@@ -1,11 +1,11 @@
 
 #pragma once
 
+#include <utils.hpp>
+
 #include <vector>
 #include <tuple>
 #include <functional>
-#include <cassert>
-#include "utils.hpp"
 
 
 namespace sc {

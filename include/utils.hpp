@@ -56,9 +56,9 @@ namespace sc {
         using value_type = T;
         using pointer = T*;
         using const_pointer = T const*;
-        using reference = T &;
+        using reference = T&;
         using const_reference = T const&;
-        using size_type = int;
+        using size_type = size_t;
         using difference_type = ptrdiff_t;
 
         template<typename U>
@@ -77,11 +77,12 @@ namespace sc {
         }
     };
 
-    template <class Collection, class T, size_t Padding> // TODO Suppress warning: arith with void*
+    template <class Collection, class T, size_t ALIGN> // TODO Suppress warning: arith with void*
     class pointer_iterator {
         friend Collection;
-        void* ptr;
-        explicit pointer_iterator(void* ptr) noexcept : ptr(ptr) {}
+        intptr_t ptr;
+        explicit pointer_iterator(intptr_t ptr) noexcept : ptr(ptr) {}
+        explicit pointer_iterator(void* ptr) noexcept : ptr(reinterpret_cast<intptr_t>(ptr)) {}
     public:
         using value_type = T;
         using difference_type = ptrdiff_t;
@@ -94,7 +95,7 @@ namespace sc {
 
         T& operator*() const noexcept { return *reinterpret_cast<T*>(ptr); }
         T* operator->() const noexcept { return reinterpret_cast<T*>(ptr); }
-        T& operator[](int shift) const noexcept { return *reinterpret_cast<T*>(ptr + Padding * shift); }
+        T& operator[](int shift) const noexcept { return *reinterpret_cast<T*>(ptr + ALIGN * shift); }
 
         bool operator==(pointer_iterator it) const noexcept { return ptr == it.ptr; }
         bool operator!=(pointer_iterator it) const noexcept { return ptr != it.ptr; }
@@ -103,14 +104,14 @@ namespace sc {
         bool operator>(pointer_iterator it) const noexcept { return ptr > it.ptr; }
         bool operator<(pointer_iterator it) const noexcept { return ptr < it.ptr; }
 
-        pointer_iterator& operator++() noexcept { ptr += Padding; return *this; }
-        pointer_iterator& operator--() noexcept { ptr -= Padding; return *this; }
-        pointer_iterator  operator++(int) noexcept { const auto it = pointer_iterator(ptr); ptr += Padding; return it; }
-        pointer_iterator  operator--(int) noexcept { const auto it = pointer_iterator(ptr); ptr -= Padding; return it; }
-        pointer_iterator& operator+=(int shift) noexcept { ptr += Padding * shift; return *this; }
-        pointer_iterator& operator-=(int shift) noexcept { ptr -= Padding * shift; return *this; }
-        pointer_iterator  operator+(int shift) const noexcept { return pointer_iterator(ptr + Padding * shift); }
-        pointer_iterator  operator-(int shift) const noexcept { return pointer_iterator(ptr - Padding * shift); }
+        pointer_iterator& operator++() noexcept { ptr += ALIGN; return *this; }
+        pointer_iterator& operator--() noexcept { ptr -= ALIGN; return *this; }
+        pointer_iterator  operator++(int) noexcept { const auto it = pointer_iterator(ptr); ptr += ALIGN; return it; }
+        pointer_iterator  operator--(int) noexcept { const auto it = pointer_iterator(ptr); ptr -= ALIGN; return it; }
+        pointer_iterator& operator+=(int shift) noexcept { ptr += ALIGN * shift; return *this; }
+        pointer_iterator& operator-=(int shift) noexcept { ptr -= ALIGN * shift; return *this; }
+        pointer_iterator  operator+(int shift) const noexcept { return pointer_iterator(ptr + ALIGN * shift); }
+        pointer_iterator  operator-(int shift) const noexcept { return pointer_iterator(ptr - ALIGN * shift); }
     };
 
 }
