@@ -13,14 +13,16 @@
 
 namespace sc {
     template <class F>
-    struct defer : F {
+    class defer {
+    public:
+        defer(F&& f) : callback(std::move(f)) {}
         ~defer() {
             static_assert(noexcept(std::declval<F>()()), "The deferred function must be marked noexcept.");
-
-            F::operator()();
+            callback();
         }
+    private:
+        F callback;
     };
-    template<class F> defer(F) -> defer<F>;
 
     namespace optional_monad {
         namespace detail {

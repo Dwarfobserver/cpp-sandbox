@@ -2,10 +2,15 @@
 #include "catch.hpp"
 
 #include <block_allocator.hpp>
+#include <utils.hpp>
 
 
 TEST_CASE("block_allocator basics", "[block_allocator]") {
-    using alloc_t = sc::block_allocator<int, std::allocator, 500, 64>;
+    using alloc_t = sc::block_allocator<int, 64>;
+
+    alloc_t().allocate_blocks(2);
+    sc::defer deallocation{[]() noexcept {
+        alloc_t().deallocate_blocks(); }};
 
     int* pValues[2];
 

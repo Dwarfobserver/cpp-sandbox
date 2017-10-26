@@ -22,7 +22,7 @@ Tests are run with Catch and can be used as a poor documentation.
  - fluent_collections : Functional-style wrapper of "collections", which are template classes with functions begin(),
                         end() and insert(iterator) that behave gently.
 
- - lazy_ranges : On progress - A better version of fluent_collections, with better performances and lazy evaluation.
+ - lazy_ranges : A version of fluent_collections with lazy evaluation.
 
  - slot_map : A structure which can add and remove elements from their id in O(1), and store them in contiguous memory.
               It is build upon std::vector.
