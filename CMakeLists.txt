@@ -13,13 +13,18 @@ set(SOURCE_FILES
         include/spsc_queue.hpp
         include/mpsc_queue.hpp
         include/slot_map.hpp
+        include/block_allocator.hpp
+        include/lazy_ranges.hpp
+        include/logger.hpp
 
         tests/catch.hpp
-        tests/main.cpp
-
+        tests/tests_performances.cpp
         tests/tests_utils.cpp
         tests/tests_fluent_collections.cpp
         tests/tests_spsc_queue.cpp
-        tests/tests_spmc_queue.cpp tests/tests_slot_map.cpp include/block_allocator.hpp tests/tests_block_allocator.cpp include/lazy_ranges.hpp tests/tests_lazy_ranges.cpp)
+        tests/tests_spmc_queue.cpp
+        tests/tests_slot_map.cpp
+        tests/tests_block_allocator.cpp
+        tests/tests_lazy_ranges.cpp)
 
 add_executable(Tests ${SOURCE_FILES})

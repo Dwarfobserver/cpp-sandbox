@@ -14,9 +14,9 @@ namespace sc {
     class slot_map {
         class data_t;
     public:
-        using iterator = sc::pointer_iterator<slot_map<T, Allocator>, T, sizeof(T) + sizeof(int)>;
+        using iterator = sc::pointer_iterator<slot_map<T, Allocator>, T, sizeof(data_t)>;
 
-        slot_map();
+        slot_map() noexcept;
 
         int size() const noexcept;
 
@@ -34,6 +34,8 @@ namespace sc {
         [[nodiscard]] int emplace(Args &&...args);
 
         void erase(int id) noexcept;
+
+        int get_id(T& val) const noexcept;
     private:
         std::vector<data_t, Allocator<T>> objects;
         std::vector<int, Allocator<T>> mapId;
@@ -56,7 +58,7 @@ namespace sc {
     // Implementation
 
     template <class T, template <class> class Allocator>
-    slot_map<T, Allocator>::slot_map() :
+    slot_map<T, Allocator>::slot_map() noexcept :
             objects(),
             mapId(),
             freeId(),
@@ -132,6 +134,11 @@ namespace sc {
         objects.pop_back();
         --_size;
         freeId.push_back(id);
+    }
+
+    template <class T, template <class> class Allocator>
+    int slot_map<T, Allocator>::get_id(T &val) const noexcept {
+        return reinterpret_cast<data_t*>(&val)->id;
     }
 
 }

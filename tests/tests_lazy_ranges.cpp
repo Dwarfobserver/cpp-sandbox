@@ -4,6 +4,22 @@
 #include <lazy_ranges.hpp>
 
 
+TEST_CASE("lazy_ranges partial evaluation", "[lazy_ranges]") {
+    std::vector<int> vec;
+    for (int i = 0; i < 20; ++i) {
+        vec.push_back(i);
+    }
+
+    int passages = 0;
+    auto opt = sc::lazy_range(vec)
+            .filter([] (int val) { return val % 2; })
+            .map  ([&] (int val) { ++passages; return val / 2; })
+            .find  (3);
+
+    REQUIRE(*opt == 3);
+    REQUIRE(passages == 4); // 0, 1, 2, 3 then found
+}
+
 TEST_CASE("lazy_ranges basics", "[lazy_ranges]") {
     std::vector<int> vec;
     for (int i = 0; i < 5; ++i) {
@@ -20,8 +36,8 @@ TEST_CASE("lazy_ranges basics", "[lazy_ranges]") {
 
     sc::lazy_range(vec.begin(), vec.end())
         .filter([] (int val) -> bool { return val >= 2; })
-        .map([] (int val) -> std::string { return std::to_string(val); })
-        .copy(std::back_inserter(vecStr));
+        .map   ([] (int val) -> std::string { return std::to_string(val); })
+        .copy  (std::back_inserter(vecStr));
 
     REQUIRE(std::to_string(vec[2]) == vecStr[0]);
 }
@@ -34,16 +50,12 @@ namespace {
     public:
         Dummy() = default;
 
-        Dummy(Dummy && old) noexcept {
-            movesCounter++;
-        }
+        Dummy(Dummy && old) noexcept { movesCounter++; }
         Dummy& operator=(Dummy && old) noexcept {
             movesCounter++;
             return *this;
         }
-        Dummy(Dummy const& clone) {
-            copiesCounter++;
-        }
+        Dummy(Dummy const& clone) { copiesCounter++; }
         Dummy& operator=(Dummy const& clone) {
             copiesCounter++;
             return *this;
@@ -57,9 +69,9 @@ TEST_CASE("lazy_ranges moves", "[lazy_ranges]") {
     std::vector<Dummy> vecCopy;
 
     sc::lazy_range(vec)
-        .map([] (Dummy const& dummy) { return dummy; })
-        .map([] (Dummy && dummy) { return std::move(dummy); })
-        .map([] (Dummy && dummy) { return std::move(dummy); })
+        .map ([] (Dummy const& dummy) { return dummy; })
+        .map ([] (Dummy && dummy) { return std::move(dummy); })
+        .map ([] (Dummy && dummy) { return std::move(dummy); })
         .copy(std::back_inserter(vecCopy));
 
     // 2 at first map, then 2 for copy

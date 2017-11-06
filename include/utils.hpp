@@ -1,7 +1,9 @@
 
 #pragma once
 
+#include <cstddef>
 #include <optional>
+#include <atomic>
 
 
 /// Defines SC_CACHE_LINE_SIZE to use structures based on custom cache line size.
@@ -15,13 +17,31 @@ namespace sc {
     template <class F>
     class defer {
     public:
-        defer(F&& f) : callback(std::move(f)) {}
+        explicit defer(F&& f) : callback(std::move(f)) {}
         ~defer() {
             static_assert(noexcept(std::declval<F>()()), "The deferred function must be marked noexcept.");
             callback();
         }
     private:
         F callback;
+    };
+
+    class spin_lock {
+        std::atomic<bool> spin;
+    public:
+        spin_lock() : spin(false) {}
+        bool try_lock() {
+            return !spin.exchange(true, std::memory_order_acquire);
+        }
+        void lock() {
+            bool exceptedValue;
+            do {
+                exceptedValue = false;
+            } while (!spin.compare_exchange_weak(exceptedValue, true, std::memory_order_acquire));
+        }
+        void unlock() {
+            spin.store(false, std::memory_order_release);
+        };
     };
 
     namespace optional_monad {

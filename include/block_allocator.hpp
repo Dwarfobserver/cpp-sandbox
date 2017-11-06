@@ -8,7 +8,7 @@
 
 namespace sc {
 
-    template <class T, size_t ALIGN = sizeof(T)>
+    template <class T, size_t ALIGN = sizeof(T)> // TAG ?
     class block_allocator {
     public:
         using value_type = T;
