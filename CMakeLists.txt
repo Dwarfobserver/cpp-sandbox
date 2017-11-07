@@ -25,6 +25,6 @@ set(SOURCE_FILES
         tests/tests_spmc_queue.cpp
         tests/tests_slot_map.cpp
         tests/tests_block_allocator.cpp
-        tests/tests_lazy_ranges.cpp)
+        tests/tests_lazy_ranges.cpp include/transactional.hpp)
 
 add_executable(Tests ${SOURCE_FILES})

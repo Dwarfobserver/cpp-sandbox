@@ -8,48 +8,6 @@
 
 namespace sc {
 
-#ifdef SC_LOGGER_DISABLED
-    class logger {
-    public:
-        output debug;
-        output info;
-        output warning;
-        output error;
-
-        logger() = default;
-
-        void set_level(level::type level) {}
-        void flush() {}
-
-        logger(logger&& moved) = delete;
-
-        struct level {
-            enum type : int {
-                debug = 0,
-                info,
-                warning,
-                error,
-                disabled
-            };
-        };
-
-        class output {
-            friend class logger;
-        public:
-            template<class Msg>
-            void operator<<(Msg &&msg) const {}
-
-            void set_header(std::string const& header) {}
-
-            output(output const &clone) = delete;
-            output(output &&clone) = delete;
-            output &operator=(output const &clone) = delete;
-            output &operator=(output &&clone) = delete;
-        private:
-            output() = default;
-        };
-    };
-#else
     class logger {
         using lock_t = std::lock_guard<std::mutex>;
         friend class output;
@@ -134,5 +92,5 @@ namespace sc {
         lock_t lock(_logger._ostreamMutex);
         _header = header;
     }
-#endif
+
 }
