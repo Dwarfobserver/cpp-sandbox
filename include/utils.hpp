@@ -18,10 +18,7 @@ namespace sc {
     class defer {
     public:
         explicit defer(F&& f) : callback(std::move(f)) {}
-        ~defer() {
-            static_assert(noexcept(std::declval<F>()()), "The deferred function must be marked noexcept.");
-            callback();
-        }
+        ~defer() { callback(); }
     private:
         F callback;
     };
@@ -99,7 +96,7 @@ namespace sc {
         }
     };
 
-    template <class Collection, class T, size_t ALIGN> // TODO Suppress warning: arith with void*
+    template <class Collection, class T, size_t ALIGN>
     class pointer_iterator {
         friend Collection;
         intptr_t ptr;

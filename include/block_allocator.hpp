@@ -79,7 +79,7 @@ namespace sc {
                     {"block_allocator can only allocate one block at a time."};
 
         if (next == nullptr) throw std::runtime_error
-                    {"block_allocator has exceeded his capacity of " + std::to_string(COUNT) + "."};
+                    {"block_allocator has exceeded his capacity of " + std::to_string(chunksCount) + "."};
 #endif
         chunk_t* result = next;
         next = next->next;

@@ -39,11 +39,11 @@ namespace sc {
             handle_t& operator=(handle_t&& moved) noexcept;
             handle_t& operator=(handle_t const& clone) noexcept;
 
-            operator bool() const noexcept { return node != nullptr; }
-            T const& operator*() const noexcept { return node->val; }
-            T const* operator->() const noexcept { return &node->val; }
+            operator bool() const noexcept;
+            T const& operator*() const noexcept;
+            T const* operator->() const noexcept;
         private:
-            explicit handle_t(node_t* node) noexcept : node{node} {}
+            explicit handle_t(node_t* node) noexcept;
 
             node_t* node;
         };
@@ -108,10 +108,12 @@ namespace sc {
 
         auto pOld = head.load();
         // Try to commit changes
+        pNew->next.store(pOld);
         new (&pNew->val) T(pOld->val);
         modifier(pNew->val);
         while (!head.compare_exchange_weak(pOld, pNew)) {
             pNew->val.~T();
+            pNew->next.store(pOld);
             new (&pNew->val) T(pOld->val);
             modifier(pNew->val);
         }
@@ -167,13 +169,15 @@ namespace sc {
 
     template <class T, template <class> class Allocator>
     transactional<T, Allocator>::handle_t::handle_t(handle_t&& moved) noexcept :
-            node{node} {
+            node{moved.node}
+    {
         moved.node = nullptr;
     }
 
     template <class T, template <class> class Allocator>
     transactional<T, Allocator>::handle_t::handle_t(handle_t const& clone) noexcept :
-            node{node} {
+            node{clone.node}
+    {
         node->refCount.fetch_add(1);
     }
 
