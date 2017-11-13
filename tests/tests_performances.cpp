@@ -10,6 +10,8 @@
 #include <functional>
 #include <mutex>
 #include <thread>
+#include <queue>
+#include <mpsc_queue.hpp>
 
 
 namespace {
@@ -79,7 +81,7 @@ TEST_CASE("performances fluent_collections vs lazy_ranges vs brut code", "[.][pe
     std::cout << "\n Brut time :   " << times[2];
     std::cout << "\n";
 }
-*/
+
 TEST_CASE("performances mutex vs spin_lock", "[.][performances]") {
     constexpr int incCount(10'000);
 
@@ -119,3 +121,68 @@ TEST_CASE("performances mutex vs spin_lock", "[.][performances]") {
     std::cout << "\n spin_lock time : " << times[1];
     std::cout << "\n";
 }
+*/
+TEST_CASE("locked std::queue vs mpsc_queue", "[.][performances]") {
+    constexpr int incCount(20'000);
+    using data_t = std::array<int, 100>;
+
+    auto locked_task = [&] () {
+        std::queue<data_t> stdQueue;
+        std::mutex mutex;
+        auto thread = [&] {
+            for (int i = 0; i < incCount; ++i) {
+                std::lock_guard<std::mutex> lock{mutex};
+                stdQueue.emplace();
+            }
+        };
+        std::vector<std::thread> threads;
+        for (int t = 0; t < std::thread::hardware_concurrency(); ++t) {
+            threads.emplace_back(thread);
+        }
+        int count = incCount * std::thread::hardware_concurrency();
+        while (count != 0) {
+            bool empty;
+            {
+                std::lock_guard<std::mutex> lock{mutex};
+                empty = stdQueue.empty();
+            }
+            if (!empty) {
+                std::lock_guard<std::mutex> lock{mutex};
+                stdQueue.front();
+                stdQueue.pop();
+                --count;
+            }
+        }
+        for (auto& t : threads) t.join();
+    };
+    auto lockfree_task = [&] () { // TODO Reduce mpsc_queue capacity crashes or blocks
+        sc::mpsc_queue<data_t> scQueue(incCount * std::thread::hardware_concurrency());
+
+        int pSum = 0;
+        auto thread = [&] {
+            for (int i = 0; i < incCount; ++i) {
+                scQueue.emplace();
+            }
+        };
+        std::vector<std::thread> threads;
+        for (int t = 0; t < std::thread::hardware_concurrency(); ++t) {
+            threads.emplace_back(thread);
+        }
+        int count = incCount * std::thread::hardware_concurrency();
+        while (count != 0) {
+            scQueue.consume_all([&] (data_t&&) {--count;});
+        }
+        for (auto& t : threads) t.join();
+    };
+
+    auto times = mesure_tasks({locked_task, lockfree_task});
+
+    std::cout << "\n       +----------------------------+";
+    std::cout << "\n       | locked queue vs mpsc_queue |";
+    std::cout << "\n       +----------------------------+";
+    std::cout << "\n";
+    std::cout << "\n std::queue + mutex time : " << times[0];
+    std::cout << "\n sc::mpsc_queue time :     " << times[1];
+    std::cout << "\n";
+}
+

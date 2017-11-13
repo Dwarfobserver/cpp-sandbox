@@ -23,6 +23,8 @@ namespace sc {
         inline void push(T const &clone) { emplace(const_cast<T&>(clone)); }
 
         template <class F>
+        void consume(F&& f);
+        template <class F>
         int consume_all(F&& f);
 
         mpsc_queue(mpsc_queue const& clone) = delete;
@@ -78,10 +80,10 @@ namespace sc {
 
     template<class T, template<class> class Allocator> template<class...Args>
     void mpsc_queue<T, Allocator>::emplace(Args &&... args) {
-        const int pos = nextPos.fetch_add(1, std::memory_order_consume) & (capacity - 1);
+        const int pos = nextPos.fetch_add(1, std::memory_order_acquire) & ~capacity;
 
         // Wait empty place
-        const int nextPos = (pos + 1) & (capacity - 1);
+        const int nextPos = (pos + 1) & ~capacity;
         while (nextPos == tail.load());
 
         new (buffer + pos) T(std::forward<Args>(args)...);
@@ -100,11 +102,22 @@ namespace sc {
             ++begin;
         }
     }
+
+    template<class T, template<class> class Allocator> template<class F>
+    void mpsc_queue<T, Allocator>::consume(F &&f) {
+        const auto data = buffer;
+        int i = tail.load(std::memory_order_acquire);
+        while (i == head.load(std::memory_order_acquire));
+        f(std::move(data[i]));
+        data[i].~T();
+        tail.store((i + 1) & ~capacity);
+    }
+
     template<class T, template<class> class Allocator> template<class F>
     int mpsc_queue<T, Allocator>::consume_all(F &&f) {
         const auto data = buffer;
-        const auto iMin = tail.load(std::memory_order_consume);
-        const auto iMax = head.load(std::memory_order_consume);
+        const auto iMin = tail.load(std::memory_order_acquire);
+        const auto iMax = head.load(std::memory_order_acquire);
         // Careful of not use unsigned
         auto count = iMax - iMin;
 

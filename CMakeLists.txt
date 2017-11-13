@@ -22,9 +22,9 @@ set(SOURCE_FILES
         tests/tests_utils.cpp
         tests/tests_fluent_collections.cpp
         tests/tests_spsc_queue.cpp
-        tests/tests_spmc_queue.cpp
+        tests/tests_mpsc_queue.cpp
         tests/tests_slot_map.cpp
         tests/tests_block_allocator.cpp
-        tests/tests_lazy_ranges.cpp include/transactional.hpp tests/tests_transactional.cpp)
+        tests/tests_lazy_ranges.cpp include/transactional.hpp tests/tests_transactional.cpp include/optional.hpp tests/tests_optional.cpp)
 
 add_executable(Tests ${SOURCE_FILES})
