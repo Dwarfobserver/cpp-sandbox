@@ -6,33 +6,34 @@
 #include <iostream>
 
 
-TEST_CASE("slot_map basics", "[slot_map]") {
+TEST_CASE("slot_map keys tracking", "[slot_map]") {
     constexpr int dataCount(16);
 
     sc::slot_map<int> map;
-    int ids[dataCount];
+    sc::slot_map<int>::key keys[dataCount];
     int values[dataCount];
 
     for (int i = 0; i < dataCount / 2; ++i) {
         values[i] = i * 20;
-        ids[i] = map.emplace(i * 20);
+        keys[i] = map.emplace(i * 20);
     }
     for (int i = 0; i < dataCount / 4; ++i) {
-        map.erase(ids[i]);
+        map.erase(keys[i]);
+        REQUIRE(!map.try_get(keys[i]));
     }
     for (int i = dataCount / 2; i < dataCount; ++i) {
         values[i] = i * 40;
-        ids[i] = map.emplace(i * 40);
+        keys[i] = map.emplace(i * 40);
     }
     for (int i = 0; i < dataCount / 4; ++i) {
         values[i] = i * 10;
-        ids[i] = map.emplace(i * 10);
+        keys[i] = map.emplace(i * 10);
     }
 
     int sum = 0;
     for (int i = 0; i < dataCount;++i) {
         sum += values[i];
-        REQUIRE(values[i] == map[ids[i]]);
+        REQUIRE(values[i] == map[keys[i]]);
     }
     int sumCopy = 0;
     for (auto val : map) sumCopy += val;
@@ -69,14 +70,14 @@ TEST_CASE("slot_map ctors, moves & dtors", "[slot_map]") {
 
     sc::slot_map<Dummy> map;
     map.reserve(dataCount);
-    int ids[dataCount];
+    sc::slot_map<Dummy>::key keys[dataCount];
 
     for (int i = 0; i < dataCount; ++i)
-        ids[i] = map.emplace();
+        keys[i] = map.emplace();
     REQUIRE(ctorsCounter == dataCount);
 
     for (int i = 1; i < dataCount; i += 2)
-        map.erase(ids[i]);
+        map.erase(keys[i]);
     REQUIRE(movesCounter == dataCount / 2);
     REQUIRE(dtorsCounter == dataCount / 2);
 

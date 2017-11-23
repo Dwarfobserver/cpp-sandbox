@@ -96,41 +96,4 @@ namespace sc {
         }
     };
 
-    template <class Collection, class T, size_t ALIGN>
-    class pointer_iterator {
-        friend Collection;
-        intptr_t ptr;
-        explicit pointer_iterator(intptr_t ptr) noexcept : ptr(ptr) {}
-        explicit pointer_iterator(void* ptr) noexcept : ptr(reinterpret_cast<intptr_t>(ptr)) {}
-    public:
-        using value_type = T;
-        using difference_type = ptrdiff_t;
-        using pointer = T*;
-        using reference = T&;
-        using iterator_category = std::random_access_iterator_tag;
-
-        pointer_iterator() noexcept : ptr(nullptr) {}
-        // Default copy, move ctors & dctor
-
-        T& operator*() const noexcept { return *reinterpret_cast<T*>(ptr); }
-        T* operator->() const noexcept { return reinterpret_cast<T*>(ptr); }
-        T& operator[](int shift) const noexcept { return *reinterpret_cast<T*>(ptr + ALIGN * shift); }
-
-        bool operator==(pointer_iterator it) const noexcept { return ptr == it.ptr; }
-        bool operator!=(pointer_iterator it) const noexcept { return ptr != it.ptr; }
-        bool operator>=(pointer_iterator it) const noexcept { return ptr >= it.ptr; }
-        bool operator<=(pointer_iterator it) const noexcept { return ptr <= it.ptr; }
-        bool operator>(pointer_iterator it) const noexcept { return ptr > it.ptr; }
-        bool operator<(pointer_iterator it) const noexcept { return ptr < it.ptr; }
-
-        pointer_iterator& operator++() noexcept { ptr += ALIGN; return *this; }
-        pointer_iterator& operator--() noexcept { ptr -= ALIGN; return *this; }
-        pointer_iterator  operator++(int) noexcept { const auto it = pointer_iterator(ptr); ptr += ALIGN; return it; }
-        pointer_iterator  operator--(int) noexcept { const auto it = pointer_iterator(ptr); ptr -= ALIGN; return it; }
-        pointer_iterator& operator+=(int shift) noexcept { ptr += ALIGN * shift; return *this; }
-        pointer_iterator& operator-=(int shift) noexcept { ptr -= ALIGN * shift; return *this; }
-        pointer_iterator  operator+(int shift) const noexcept { return pointer_iterator(ptr + ALIGN * shift); }
-        pointer_iterator  operator-(int shift) const noexcept { return pointer_iterator(ptr - ALIGN * shift); }
-    };
-
 }

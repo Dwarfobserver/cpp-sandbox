@@ -1,13 +1,14 @@
 
 cmake_minimum_required(VERSION 3.8)
-project(Skappie)
+project(cpp-sandbox)
 set(CMAKE_CXX_STANDARD 17)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-
-
 set(SOURCE_FILES
+
+        # Includes
+
         include/utils.hpp
         include/fluent_collections.hpp
         include/spsc_queue.hpp
@@ -16,6 +17,17 @@ set(SOURCE_FILES
         include/block_allocator.hpp
         include/lazy_ranges.hpp
         include/logger.hpp
+        include/transactional.hpp
+        include/optional.hpp
+        include/stack_allocator.hpp
+        include/pointer_iterators.hpp
+
+        include/udp/traits.hpp
+        include/udp/packet.hpp
+        include/udp/listener.hpp
+        include/udp/sender.hpp
+
+        # Tests
 
         tests/catch.hpp
         tests/tests_performances.cpp
@@ -25,6 +37,12 @@ set(SOURCE_FILES
         tests/tests_mpsc_queue.cpp
         tests/tests_slot_map.cpp
         tests/tests_block_allocator.cpp
-        tests/tests_lazy_ranges.cpp include/transactional.hpp tests/tests_transactional.cpp include/optional.hpp tests/tests_optional.cpp)
+        tests/tests_lazy_ranges.cpp
+        tests/tests_transactional.cpp
+        tests/tests_optional.cpp
+
+#        tests/udp_socket_impl.hpp
+#        tests/tests_udp_sockets.cpp
+        )
 
 add_executable(Tests ${SOURCE_FILES})
