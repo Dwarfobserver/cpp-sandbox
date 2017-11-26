@@ -23,6 +23,17 @@ namespace sc {
         F callback;
     };
 
+    namespace detail {
+        template <class T, bool ENABLE>
+        struct return_if;
+
+        template <class T>
+        struct return_if<T, true> { using type = T; };
+    }
+    // Used for sfinae expression in return type (without specialization)
+    template <class T, bool ENABLE>
+    using return_if_t = typename detail::return_if<T, ENABLE>::type;
+
     class spin_lock {
         std::atomic<bool> spin;
     public:

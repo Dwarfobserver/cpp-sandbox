@@ -22,6 +22,7 @@ set(SOURCE_FILES
         include/stack_allocator.hpp
         include/pointer_iterators.hpp
         include/flag_enums.hpp
+        include/serializer_span.hpp
 
         include/udp/traits.hpp
         include/udp/packet.hpp
@@ -42,6 +43,7 @@ set(SOURCE_FILES
         tests/tests_transactional.cpp
         tests/tests_optional.cpp
         tests/tests_flag_enums.cpp
+        tests/tests_serializer_span.cpp
 
 #        tests/udp_socket_impl.hpp
 #        tests/tests_udp_sockets.cpp

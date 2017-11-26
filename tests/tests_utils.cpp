@@ -13,6 +13,28 @@ TEST_CASE("utils defer", "[utils]") {
     REQUIRE(i == 42);
 }
 
+
+template <class Concept, class T>
+auto operation(Concept& c, T const& data)
+-> Concept& {
+    return ++c;
+};
+
+template <class Concept>
+auto operation(Concept& c, int data)
+-> sc::return_if_t<Concept, std::is_same_v<Concept, int>>& {
+    c+= data;
+    return c;
+};
+
+TEST_CASE("utils return_if_t", "[utils]") {
+    float f = 0;
+    REQUIRE(operation(f, 42) == 1);
+    int value = 0;
+    operation(value, 2);
+    REQUIRE(value == 2);
+}
+
 TEST_CASE("utils optional_monad", "[utils]") {
     using namespace sc::optional_monad;
 
