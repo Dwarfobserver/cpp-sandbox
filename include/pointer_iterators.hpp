@@ -7,7 +7,7 @@
 
 namespace sc {
 
-    template <class Collection, class T, size_t ALIGN>
+    template <class Collection, class T, size_t ALIGN = sizeof(T)>
     class pointer_iterator {
         friend Collection;
         intptr_t ptr;
@@ -44,7 +44,7 @@ namespace sc {
         pointer_iterator  operator-(int shift) const noexcept { return pointer_iterator(ptr - ALIGN * shift); }
     };
 
-    template <class Collection, class T, size_t ALIGN>
+    template <class Collection, class T, size_t ALIGN = sizeof(T)>
     class const_pointer_iterator {
         friend Collection;
         intptr_t ptr;
@@ -81,7 +81,7 @@ namespace sc {
         const_pointer_iterator  operator-(int shift) const noexcept { return const_pointer_iterator(ptr - ALIGN * shift); }
     };
 
-    template <class Collection, class T, size_t ALIGN>
+    template <class Collection, class T, size_t ALIGN = sizeof(T)>
     class reverse_pointer_iterator {
         friend Collection;
         intptr_t ptr;
@@ -118,7 +118,7 @@ namespace sc {
         reverse_pointer_iterator  operator-(int shift) const noexcept { return reverse_pointer_iterator(ptr + ALIGN * shift); }
     };
 
-    template <class Collection, class T, size_t ALIGN>
+    template <class Collection, class T, size_t ALIGN = sizeof(T)>
     class const_reverse_pointer_iterator {
         friend Collection;
         intptr_t ptr;

@@ -5,6 +5,7 @@
 #include <utils.hpp>
 #include <lazy_ranges.hpp>
 #include <fluent_collections.hpp>
+#include <pod_vector.hpp>
 
 #include <chrono>
 #include <functional>
@@ -121,7 +122,7 @@ TEST_CASE("performances mutex vs spin_lock", "[.][performances]") {
     std::cout << "\n spin_lock time : " << times[1];
     std::cout << "\n";
 }
-*/
+
 TEST_CASE("locked std::queue vs mpsc_queue", "[.][performances]") {
     constexpr int incCount(20'000);
     using data_t = std::array<int, 100>;
@@ -186,3 +187,67 @@ TEST_CASE("locked std::queue vs mpsc_queue", "[.][performances]") {
     std::cout << "\n";
 }
 
+TEST_CASE("performances mutex vs spin_lock", "[.][performances]") {
+    constexpr int incCount(10'000);
+
+    auto thread_task = [] (auto& lockable) {
+        using lock_t = std::lock_guard<decltype(lockable)>;
+        int sum = 0;
+
+        auto thread = [=, &lockable, &sum] {
+            int lastValue = -1;
+            for (int i = 0; i < incCount; ++i) {
+                lock_t lock(lockable);
+                if (lastValue != sum) {
+                    lastValue = ++sum;
+                }
+            }
+        };
+
+        std::vector<std::thread> threads;
+        for (int t = 0; t < std::thread::hardware_concurrency(); ++t) {
+            threads.emplace_back(thread);
+        }
+        for (auto& t : threads) t.join();
+    };
+
+    sc::spin_lock spinLock;
+    std::mutex mutex;
+    auto times = mesure_tasks({
+                                      [&] { thread_task(mutex); },
+                                      [&] { thread_task(spinLock); }
+                              });
+
+    std::cout << "\n       +--------------------+";
+    std::cout << "\n       | spin_lock vs mutex |";
+    std::cout << "\n       +--------------------+";
+    std::cout << "\n";
+    std::cout << "\n mutex time :     " << times[0];
+    std::cout << "\n spin_lock time : " << times[1];
+    std::cout << "\n";
+}
+*/
+TEST_CASE("pod_vector vs std::vector (bytes)", "[.][performances]") {
+
+    auto vector_task = [] (auto vector) {
+        auto vec = vector;
+        for (int i = 0; i < 100'000; ++i) {
+            auto v = vec;
+            v.resize(10'000);
+            auto v2 = v;
+        }
+    };
+
+    auto times = mesure_tasks({
+        [=] { vector_task(std::vector<char>{}); },
+        [=] { vector_task(sc::pod_vector<char>{}); }
+    });
+
+    std::cout << "\n       +-----------------------------------+";
+    std::cout << "\n       | pod_vector vs std::vector (bytes) |";
+    std::cout << "\n       +-----------------------------------+";
+    std::cout << "\n";
+    std::cout << "\n std::vector resize and copies : " << times[0];
+    std::cout << "\n pod_vector resize and copies :  " << times[1];
+    std::cout << "\n";
+}

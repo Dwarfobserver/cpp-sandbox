@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <optional>
 
 
 namespace sc {

@@ -22,7 +22,8 @@ auto operation(Concept& c, T const& data)
 
 template <class Concept>
 auto operation(Concept& c, int data)
--> sc::return_if_t<Concept, std::is_same_v<Concept, int>>& {
+-> sc::return_if_t<std::is_same_v<Concept, int>,
+        Concept>& {
     c+= data;
     return c;
 };
