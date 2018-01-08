@@ -68,9 +68,17 @@ namespace sc {
         }
 
         template <class T, class F>
-        auto operator|(std::optional<T> opt, F&& f) -> detail::add_optionality_t<decltype(f(*opt))> {
+        auto operator|(std::optional<T>& opt, F&& f) -> detail::add_optionality_t<decltype(f(*opt))> {
             if (opt) {
-                return f(*opt);
+                 return f(*opt);
+            }
+            else return {};
+        }
+
+        template <class T, class F>
+        auto operator|(std::optional<T> const& opt, F&& f) -> detail::add_optionality_t<decltype(f(*opt))> {
+            if (opt) {
+                 return f(*opt);
             }
             else return {};
         }

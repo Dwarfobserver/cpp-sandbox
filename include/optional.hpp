@@ -13,7 +13,7 @@ namespace sc {
         template <class Opt, class T>
         constexpr bool is_optional<Opt, T, std::enable_if_t<
                 std::is_same_v<Opt, decltype(Opt())> &&
-                std::is_same_v<T, decltype(*Opt())> &&
+                std::is_same_v<T&, decltype(*Opt())> &&
                 std::is_same_v<T*, decltype(Opt().operator->())> &&
                 std::is_same_v<bool, decltype((bool) Opt())> &&
                 !std::is_same_v<int, std::void_t< // Test expressions
@@ -22,20 +22,29 @@ namespace sc {
         >> = true;
     }
 
-    template <class T, T EMPTY_VALUE>
+    struct optional_emplace_tag {};
+
+    template <auto EMPTY_VALUE>
     class optional {
     public:
-        constexpr optional() noexcept : val{EMPTY_VALUE} {}
-        constexpr optional(optional const& opt) noexcept : val{opt.val} {}
-        constexpr optional(T val) noexcept : val{val} {}
-        constexpr optional& operator=(optional opt) noexcept { val = opt.val; return *this; }
-        constexpr optional& operator=(T val) noexcept { this->val = val; return *this; }
+        using value_type = decltype(EMPTY_VALUE);
 
-        constexpr T operator*() const noexcept { return val; }
-        T* operator->() noexcept { return &val; }
-        T const* operator->() const noexcept { return &val; }
+        constexpr optional() noexcept : val{EMPTY_VALUE} {}
+        constexpr optional(optional_emplace_tag&&) noexcept : val{} {}
+
+        template <class Arg, class...Args>
+        constexpr optional(Arg&& arg, Args&&...args) noexcept :
+                val{std::forward<Arg>(arg), std::forward<Args>(args)...} {}
+
+        constexpr optional& operator=(optional opt) noexcept { val = opt.val; return *this; }
+        constexpr optional& operator=(value_type val) noexcept { this->val = val; return *this; }
+
+        value_type& operator*() noexcept { return val; }
+        constexpr value_type operator*() const noexcept { return val; }
+        value_type* operator->() noexcept { return &val; }
+        value_type const* operator->() const noexcept { return &val; }
         constexpr operator bool() const noexcept { return val != EMPTY_VALUE; }
     private:
-        T val;
+        value_type val;
     };
 }

@@ -24,6 +24,8 @@ set(SOURCE_FILES
         include/flag_enums.hpp
         include/serializer_span.hpp
         include/pod_vector.hpp
+        include/terminal.hpp src/terminal.cpp
+        include/make_string.hpp
 
         # Tests
 
@@ -39,6 +41,9 @@ set(SOURCE_FILES
         tests/tests_transactional.cpp
         tests/tests_optional.cpp
         tests/tests_flag_enums.cpp
-        tests/tests_serializer_span.cpp tests/tests_pod_vector.cpp)
+#       tests/tests_serializer_span.cpp
+        tests/tests_pod_vector.cpp
+        tests/tests_make_string.cpp
+        tests/tests_stack_allocator.cpp)
 
 add_executable(Tests ${SOURCE_FILES})

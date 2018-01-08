@@ -35,3 +35,9 @@ Tests are run with Catch and can be used as a poor documentation.
  - optional : A template class used to define fast, compile-time optional with a type and the type value considered 'empty'.
 
  - serializer_span : A span on non-owning memory for serialisation.
+
+ - make_string : A generic function which will attempt to conveft any type to a string. In particular, it works for tuples
+                 or pairs, iterables, and types with a to_string function (std::to_string is tested).
+
+ - pod_vector : A fast version of std::vecto which doesn't construct or destroy it's elements (useful for bytes array for
+                exemple).

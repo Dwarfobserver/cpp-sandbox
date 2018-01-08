@@ -51,7 +51,6 @@ namespace sc {
         T& emplace_back(Args&&...args);
         void pop_back();
 
-
         iterator begin()                       { return iterator(data_); }
         iterator end()                         { return iterator(data_ + size_); }
         const_iterator cbegin() const          { return const_iterator(data_); }

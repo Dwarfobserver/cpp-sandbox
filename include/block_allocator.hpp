@@ -4,108 +4,95 @@
 #include <cstddef>
 #include <stdexcept>
 #include <vector>
+#include <cassert>
+#include "pod_vector.hpp"
 
 
 namespace sc {
 
-    template <class T, size_t ALIGN = sizeof(T)> // TAG ?
+    template <bool DYNAMIC, class T>
+    class block_allocator_resource;
+
+    // Static resource
+
+    template <class T>
+    class block_allocator_resource<false, T> {
+    public:
+        explicit block_allocator_resource(int size) :
+            size_(0),
+            blocks_(size)
+        {
+            for (int i = 0; i < size - 1; ++i) {
+                blocks_[i].pNext = blocks_.data() + i + 1;
+            }
+            blocks_.back().pNext = nullptr;
+            pNext_ = blocks_.data();
+        }
+        block_allocator_resource(block_allocator_resource&&) = delete;
+        block_allocator_resource& operator=(block_allocator_resource&&) = delete;
+
+        T* allocate() {
+            assert(pNext_ != nullptr);
+            auto ptr = reinterpret_cast<T*>(pNext_);
+            pNext_ = pNext_->pNext;
+            ++size_;
+            return ptr;
+        }
+        void deallocate(T* ptr) {
+            auto nodePtr = reinterpret_cast<node_t*>(ptr);
+            nodePtr->pNext = pNext_;
+            pNext_ = nodePtr;
+            --size_;
+        }
+
+        int size() const { return size_; }
+        int capacity() const { return blocks_.size(); }
+    private:
+        struct alignas(alignof(T)) node_t {
+            union {
+                std::aligned_storage_t<sizeof(T), alignof(T)> storage;
+                node_t* pNext;
+            };
+        };
+
+        int size_;
+        node_t* pNext_;
+        sc::pod_vector<node_t> blocks_;
+    };
+
+    // Allocator
+
+    template <bool DYNAMIC, class T>
     class block_allocator {
     public:
         using value_type = T;
-        using pointer = T*;
-        using const_pointer = T const*;
-        using reference = T&;
-        using const_reference = T const&;
-        using size_type = size_t;
-        using difference_type = ptrdiff_t;
+        using propagate_on_container_move_assignment = std::true_type;
+        using propagate_on_container_copy_assignment = std::true_type;
+        using is_always_equal = std::false_type;
+
+        explicit block_allocator(block_allocator_resource<DYNAMIC, T>& resource) : resource_(resource) {}
 
         // Must not be rebind
 
-        template <template <class> class Allocator = std::allocator>
-        void allocate_blocks(size_t nb);
-
-        template <template <class> class Allocator = std::allocator>
-        void deallocate_blocks();
-
-        T* allocate(size_t nb);
-        void deallocate(T* pChunk, size_t nb);
-
+        T* allocate(size_t nb) {
+            assert(nb == 1);
+            return resource_.allocate();
+        }
+        void deallocate(T* ptr, size_t nb) {
+            assert(nb == 1);
+            resource_.deallocate(ptr);
+        }
     private:
-        struct alignas(ALIGN) chunk_t {
-            union {
-                chunk_t* next;
-                std::byte bytes[ALIGN];
-            };
-        };
-        static chunk_t* chunks;
-        static chunk_t* next;
-        static size_t chunksCount;
+        block_allocator_resource<DYNAMIC, T>& resource_;
     };
 
-    // ______________
-    // Implementation
-
-    template <class T, size_t ALIGN> template <template <class> class Allocator>
-    void block_allocator<T, ALIGN>::allocate_blocks(size_t nb) {
-        static_assert(sizeof(T) <= ALIGN, "T must have a lower size than the alignment required.");
-        if (chunks != nullptr)
-            throw std::runtime_error{"Tried to allocate already allocated blocks."};
-
-        chunksCount = nb;
-        chunks = Allocator<chunk_t>().allocate(nb);
-        for (int i = 0; i < nb - 1; ++i) {
-            chunks[i].next = (chunks + i + 1);
-        }
-        chunks[nb - 1].next = nullptr;
-        next = chunks;
-    }
-
-    template <class T, size_t ALIGN> template <template <class> class Allocator>
-    void block_allocator<T, ALIGN>::deallocate_blocks() {
-        static_assert(sizeof(T) <= ALIGN, "T must have a lower size than the alignment required.");
-        if (chunks == nullptr)
-            throw std::runtime_error{"Tried to deallocate blocks not allocated."};
-
-        Allocator<chunk_t>().deallocate(chunks, chunksCount);
-        chunks = nullptr;
-        chunksCount = 0;
-    }
-
-    template <class T, size_t ALIGN>
-    T* block_allocator<T, ALIGN>::allocate(size_t nb) {
-        static_assert(sizeof(T) <= ALIGN, "T must have a lower size than the alignment required.");
-#ifndef NDEBUG
-        if (nb != 1) throw std::runtime_error
-                    {"block_allocator can only allocate one block at a time."};
-
-        if (next == nullptr) throw std::runtime_error
-                    {"block_allocator has exceeded his capacity of " + std::to_string(chunksCount) + "."};
-#endif
-        chunk_t* result = next;
-        next = next->next;
-        return reinterpret_cast<T*>(result);
-    }
-
-    template <class T, size_t ALIGN>
-    void block_allocator<T, ALIGN>::deallocate(T *pChunk, size_t nb) {
-        static_assert(sizeof(T) <= ALIGN, "T must have a lower size than the alignment required.");
-#ifndef NDEBUG
-        if (nb != 1) throw std::runtime_error
-                    {"block_allocator can only allocate one block at a time."};
-#endif
-        reinterpret_cast<chunk_t*>(pChunk)->next = next;
-        next = reinterpret_cast<chunk_t*>(pChunk);
-    }
-
-    template <class T, size_t ALIGN>
-    typename block_allocator<T, ALIGN>::chunk_t*
-             block_allocator<T, ALIGN>::chunks = nullptr;
-
-    template <class T, size_t ALIGN>
-    typename block_allocator<T, ALIGN>::chunk_t*
-             block_allocator<T, ALIGN>::next = nullptr;
-
-    template <class T, size_t ALIGN>
-    size_t block_allocator<T, ALIGN>::chunksCount = 0;
+    template <bool DYNAMIC, class T, class U>
+    bool operator==(block_allocator<DYNAMIC, T> const& lhs, block_allocator<DYNAMIC, U> const& rhs) {
+        return &lhs.resource_ == &rhs.resource_;
+    };
+    template <bool DYNAMIC, class T, class U>
+    bool operator!=(block_allocator<DYNAMIC, T> const& lhs, block_allocator<DYNAMIC, U> const& rhs) {
+        return &lhs.resource_ != &rhs.resource_;
+    };
 
 }

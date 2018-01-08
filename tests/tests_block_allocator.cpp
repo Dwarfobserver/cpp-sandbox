@@ -5,25 +5,18 @@
 #include <utils.hpp>
 
 
-TEST_CASE("block_allocator basics", "[block_allocator]") {
-    using alloc_t = sc::block_allocator<int, 64>;
+TEST_CASE("block_allocator static", "[block_allocator]") {
+    sc::block_allocator_resource<false, int> resource(3);
+    sc::block_allocator<false, int> allocator(resource);
 
-    alloc_t().allocate_blocks(2);
-    sc::defer deallocation{[]() noexcept {
-        alloc_t().deallocate_blocks(); }};
+    auto i1 = allocator.allocate(1);
+    auto i2 = allocator.allocate(1);
 
-    int* pValues[2];
+    REQUIRE(resource.size() == 2);
 
-    pValues[0] = alloc_t().allocate(1);
-    *pValues[0] = 10;
-    pValues[1] = alloc_t().allocate(1);
-    *pValues[1] = 20;
-    alloc_t().deallocate(pValues[0], 1);
-    pValues[0] = alloc_t().allocate(1);
-    *pValues[0] = 30;
+    allocator.deallocate(i2, 1);
+    i2 = allocator.allocate(1);
+    auto i3 = allocator.allocate(1);
 
-    REQUIRE(*pValues[0] == 30);
-    REQUIRE(reinterpret_cast<intptr_t>(pValues[0]) % 64 == 0);
-    REQUIRE(*pValues[1] == 20);
-    REQUIRE(reinterpret_cast<intptr_t>(pValues[1]) % 64 == 0);
+    REQUIRE(resource.size() == resource.capacity());
 }

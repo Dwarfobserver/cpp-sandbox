@@ -52,8 +52,8 @@ namespace flag_operators {
             return static_cast<detail::integer_t<Enum>>(e);
         }
         template<class Enum>
-        auto& int_ref_of(Enum e) {
-            return static_cast<detail::integer_t<Enum>&>(e);
+        auto& int_ref_of(Enum& e) {
+            return *static_cast<detail::integer_t<Enum>*>(&e);
         }
     }
 
