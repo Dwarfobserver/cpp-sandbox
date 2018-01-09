@@ -26,6 +26,8 @@ set(SOURCE_FILES
         include/pod_vector.hpp
         include/terminal.hpp src/terminal.cpp
         include/make_string.hpp
+        include/monad.hpp
+        include/type_traits.hpp
 
         # Tests
 
@@ -44,6 +46,7 @@ set(SOURCE_FILES
 #       tests/tests_serializer_span.cpp
         tests/tests_pod_vector.cpp
         tests/tests_make_string.cpp
-        tests/tests_stack_allocator.cpp)
+        tests/tests_stack_allocator.cpp
+        tests/tests_monad.cpp)
 
 add_executable(Tests ${SOURCE_FILES})
