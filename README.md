@@ -41,3 +41,7 @@ Tests are run with Catch and can be used as a poor documentation.
 
  - pod_vector : A fast version of std::vecto which doesn't construct or destroy it's elements (useful for bytes array for
                 exemple).
+
+ - monad : Let compose functions for monad types, with the operator '|' in the namespace sc::monad_operator. These types
+           can be added by specializing the 'monad_traits' template class. std::optional and containers (iterables and with
+           emplace, emplace_back or emplace_front) have a monad_trait specialized.
