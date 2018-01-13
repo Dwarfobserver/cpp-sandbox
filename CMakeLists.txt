@@ -16,7 +16,6 @@ set(SOURCE_FILES
         include/slot_map.hpp
         include/block_allocator.hpp
         include/lazy_ranges.hpp
-        include/logger.hpp
         include/transactional.hpp
         include/optional.hpp
         include/stack_allocator.hpp
@@ -47,6 +46,7 @@ set(SOURCE_FILES
         tests/tests_pod_vector.cpp
         tests/tests_make_string.cpp
         tests/tests_stack_allocator.cpp
-        tests/tests_monad.cpp)
+        tests/tests_monad.cpp
+        tests/tests_type_traits.cpp)
 
 add_executable(Tests ${SOURCE_FILES})

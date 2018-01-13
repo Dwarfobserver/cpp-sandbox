@@ -7,18 +7,6 @@
 
 namespace sc {
 
-    // Is valid expression
-
-    namespace detail {
-        template <template <class...> class Expression, typename SFINAE, typename... Ts>
-        constexpr bool is_valid_expression = false;
-
-        template <template <class...> class Expression, typename... Ts>
-        constexpr bool is_valid_expression<Expression, std::void_t<Expression<Ts...>>, Ts...> = true;
-    }
-    template<template<class...> class Expression, typename... Ts>
-    constexpr bool is_valid_expression = detail::is_valid_expression<Expression, void, Ts...>;
-
     // Is iterator
 
     namespace detail {
@@ -41,9 +29,10 @@ namespace sc {
 
         template <class T>
         constexpr bool is_iterable<T, std::enable_if_t<
-            is_iterator<typename T::iterator> &&
-            std::is_same_v<typename T::iterator, std::remove_reference_t<decltype(std::declval<T>().begin())>> &&
-            std::is_same_v<typename T::iterator, std::remove_reference_t<decltype(std::declval<T>().end())>>
+            std::is_same_v<
+                std::remove_reference_t<decltype(std::begin(std::declval<T>()))>,
+                std::remove_reference_t<decltype(std::end  (std::declval<T>()))>
+            >
         >> = true;
     }
     template <class T>
@@ -123,5 +112,24 @@ namespace sc {
     void emplace_in(Container& container, Args&&...args) {
         detail::emplace_value<Container>::invoke(container, std::forward<Args>(args)...);
     }
+
+    // Efficient argument type
+
+    namespace detail {
+        template <class T, class SFINAE = void>
+        struct efficient_argument {
+            using type = T const&;
+        };
+
+        template <class T>
+        struct efficient_argument<T, std::enable_if_t<
+            (sizeof(T) <= 2 * sizeof(uintptr_t)) &&
+            std::is_trivially_copy_constructible_v<T>
+        >> {
+            using type = T;
+        };
+    }
+    template <class T>
+    using efficient_argument_t = typename detail::efficient_argument<T>::type;
 
 };

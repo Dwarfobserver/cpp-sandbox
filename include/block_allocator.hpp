@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <vector>
 #include <cassert>
+#include <forward_list>
 #include "pod_vector.hpp"
 
 
@@ -58,6 +59,64 @@ namespace sc {
         int size_;
         node_t* pNext_;
         sc::pod_vector<node_t> blocks_;
+    };
+
+    // Dynamic resource
+
+    template <class T>
+    class block_allocator_resource<true, T> {
+    public:
+        explicit block_allocator_resource(int size) :
+                size_(0),
+                blocksCount_(0),
+                blocksSize_(size)
+        {
+            make_blocks();
+        }
+        block_allocator_resource(block_allocator_resource&&) = delete;
+        block_allocator_resource& operator=(block_allocator_resource&&) = delete;
+
+        T* allocate() {
+            if (pNext_ == nullptr) {
+                make_blocks();
+            }
+            auto ptr = reinterpret_cast<T*>(pNext_);
+            pNext_ = pNext_->pNext;
+            ++size_;
+            return ptr;
+        }
+        void deallocate(T* ptr) {
+            auto nodePtr = reinterpret_cast<node_t*>(ptr);
+            nodePtr->pNext = pNext_;
+            pNext_ = nodePtr;
+            --size_;
+        }
+
+        int size() const { return size_; }
+        int capacity() const { return blocksCount_ * blocksSize_; }
+    private:
+        void make_blocks() {
+            ++blocksCount_;
+            auto& vec = blocks_.emplace_front(blocksSize_);
+            for (int i = 0; i < blocksSize_ - 1; ++i) {
+                vec[i].pNext = vec.data() + i + 1;
+            }
+            vec.back().pNext = nullptr;
+            pNext_ = vec.data();
+        }
+
+        struct alignas(alignof(T)) node_t {
+            union {
+                std::aligned_storage_t<sizeof(T), alignof(T)> storage;
+                node_t* pNext;
+            };
+        };
+
+        int size_;
+        node_t* pNext_;
+        int blocksCount_;
+        int blocksSize_;
+        std::forward_list<sc::pod_vector<node_t>> blocks_;
     };
 
     // Allocator
