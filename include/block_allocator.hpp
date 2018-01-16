@@ -11,6 +11,8 @@
 
 namespace sc {
 
+    // TODO Allow block to store other types (with less size / align constraints)
+
     template <bool DYNAMIC, class T>
     class block_allocator_resource;
 

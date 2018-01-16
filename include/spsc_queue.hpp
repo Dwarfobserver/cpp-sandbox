@@ -19,7 +19,7 @@ namespace sc {
         void emplace(Args &&...args);
 
         inline void push(T&& moved) { emplace(std::move(moved)); }
-        inline void push(T const &clone) { emplace(const_cast<T&>(clone)); }
+        inline void push(T const &clone) { emplace(clone); }
 
         // Apply a function which consumes each available data and returns the number of executions
         template<class F>

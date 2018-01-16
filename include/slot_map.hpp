@@ -70,7 +70,7 @@ namespace sc {
         std::vector<key, Allocator<T>> freeKeys;
         int size_;
 
-        struct data_t {
+        struct alignas(T) data_t {
             T val;
             key k;
 
