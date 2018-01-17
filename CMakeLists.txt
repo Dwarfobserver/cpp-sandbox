@@ -21,7 +21,8 @@ set(SOURCE_FILES
         include/stack_allocator.hpp
         include/pointer_iterators.hpp
         include/flag_enums.hpp
-        include/serializer_span.hpp
+#       include/serializer_span.hpp
+        include/serializer_span2.hpp
         include/pod_vector.hpp
         include/terminal.hpp src/terminal.cpp
         include/make_string.hpp

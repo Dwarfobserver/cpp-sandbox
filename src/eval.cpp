@@ -4,6 +4,8 @@
 #include <sstream>
 #include <iostream>
 #include <windows.h>
+#include <chrono>
+#include <atomic>
 
 namespace sc {
 
@@ -19,22 +21,20 @@ namespace sc {
         }
 
         int create_process(std::string const& executable) {
-            STARTUPINFO si;
-            ZeroMemory( &si, sizeof(si) );
+            STARTUPINFO si {};
             si.cb = sizeof(si);
 
-            PROCESS_INFORMATION pi;
-            ZeroMemory( &pi, sizeof(pi) );
+            PROCESS_INFORMATION pi {};
 
             auto command = "./" + executable;
-            if(!CreateProcess(NULL,           // No module name (use command line)
+            if(!CreateProcess(nullptr,        // No module name (use command line)
                               command.data(), // Command line
-                              NULL,           // Process handle not inheritable
-                              NULL,           // Thread handle not inheritable
-                              FALSE,          // Set handle inheritance to FALSE
+                              nullptr,        // Process handle not inheritable
+                              nullptr,        // Thread handle not inheritable
+                              false,          // Set handle inheritance to FALSE
                               0,              // No creation flags
-                              NULL,           // Use parent's environment block
-                              NULL,           // Use parent's starting directory
+                              nullptr,        // Use parent's environment block
+                              nullptr,        // Use parent's starting directory
                               &si,            // Pointer to STARTUPINFO structure
                               &pi)) {         // Pointer to PROCESS_INFORMATION structure
                 throw std::runtime_error{
@@ -55,18 +55,20 @@ namespace sc {
     }
 
     int eval(std::string const& code) {
-        int seed = 0;
+        static std::atomic_int next_id = 0;
+        int id = next_id.fetch_add(1, std::memory_order_relaxed);
+
         std::string srcName;
         {
             std::ofstream srcFile;
             do {
-                srcName = generate_source_name(++seed);
-                srcFile = std::ofstream{srcName};
+                srcName = generate_source_name(++id);
+                srcFile = std::ofstream{ srcName };
             } while (!srcFile.is_open());
             srcFile << code;
         }
-        auto logName = generate_log_name(seed);
-        auto exeName = generate_exe_name(seed);
+        auto logName = generate_log_name(id);
+        auto exeName = generate_exe_name(id);
         auto command = "g++ " + srcName + " -o " + exeName + " 2> " + logName;
 
         auto gccRes = std::system(command.c_str());

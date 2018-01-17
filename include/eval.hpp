@@ -2,7 +2,6 @@
 #pragma once
 
 #include <string>
-#include <future>
 
 
 namespace sc {
