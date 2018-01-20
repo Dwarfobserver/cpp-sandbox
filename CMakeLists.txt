@@ -29,6 +29,7 @@ set(SOURCE_FILES
         include/monad.hpp
         include/type_traits.hpp
         include/eval.hpp src/eval.cpp
+        include/movable_function.hpp
 
         # Tests
 
@@ -50,6 +51,7 @@ set(SOURCE_FILES
         tests/tests_stack_allocator.cpp
         tests/tests_monad.cpp
         tests/tests_type_traits.cpp
-        tests/tests_eval.cpp)
+        tests/tests_eval.cpp
+        tests/tests_movable_function.cpp)
 
 add_executable(Tests ${SOURCE_FILES})

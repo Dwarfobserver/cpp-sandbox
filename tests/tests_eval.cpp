@@ -4,7 +4,7 @@
 #include <future>
 
 
-TEST_CASE("eval simplest program", "[!eval]") {
+TEST_CASE("eval simplest program", "[eval]") {
     int code = 42;
     try {
         code = sc::eval("int main() { return -3; }");
@@ -15,7 +15,7 @@ TEST_CASE("eval simplest program", "[!eval]") {
     REQUIRE(code == -3);
 }
 
-TEST_CASE("eval multiple programs", "[!eval]") {
+TEST_CASE("eval multiple programs", "[eval]") {
     std::vector<std::string> sources;
     for (int i = 1; i <= 5; ++i) {
         sources.push_back("int main() { return " + std::to_string(i) + "; }");
