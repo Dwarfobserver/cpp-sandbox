@@ -9,7 +9,6 @@ set(SOURCE_FILES
 
         # Includes
 
-        include/utils.hpp
         include/fluent_collections.hpp
         include/spsc_queue.hpp
         include/mpsc_queue.hpp
@@ -35,7 +34,6 @@ set(SOURCE_FILES
 
         tests/catch.hpp
         tests/tests_performances.cpp
-        tests/tests_utils.cpp
         tests/tests_fluent_collections.cpp
         tests/tests_spsc_queue.cpp
         tests/tests_mpsc_queue.cpp

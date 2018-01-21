@@ -26,7 +26,7 @@ namespace sc {
 
             PROCESS_INFORMATION pi {};
 
-            auto command = "./" + executable;
+            auto command = "./" + executable; /// Comments kept (from a Stack Overflow post) :
             if(!CreateProcess(nullptr,        // No module name (use command line)
                               command.data(), // Command line
                               nullptr,        // Process handle not inheritable

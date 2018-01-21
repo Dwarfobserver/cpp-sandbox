@@ -11,12 +11,12 @@
 
 namespace sc {
 
-    template<class T, template <class> class Allocator = std::allocator>
-    class slot_map { // To falsify keys : store gen in indices
+    template<class T, class Allocator = std::allocator<T>>
+    class slot_map {
         class data_t;
     public:
         struct key {
-            friend class slot_map;
+            friend class slot_map<T, Allocator>;
             key() = default;
             key(key const&) = default;
             key& operator=(key const&) = default;
@@ -27,7 +27,7 @@ namespace sc {
             key nextGen() const noexcept;
 
             static constexpr int GEN_MASK = (1 << 24) - 1;
-            int value;
+            int value_;
         };
 
         using iterator = sc::pointer_iterator<slot_map<T, Allocator>, T, sizeof(data_t)>;
@@ -35,7 +35,7 @@ namespace sc {
         using reverse_iterator = sc::reverse_pointer_iterator<slot_map<T, Allocator>, T, sizeof(data_t)>;
         using const_reverse_iterator = sc::const_reverse_pointer_iterator<slot_map<T, Allocator>, T, sizeof(data_t)>;
 
-        slot_map() noexcept;
+        explicit slot_map(Allocator const& allocator = Allocator()) noexcept;
 
         int size() const noexcept;
 
@@ -65,9 +65,14 @@ namespace sc {
 
         key get_key(T &val) const noexcept;
     private:
-        std::vector<data_t, Allocator<T>> objects;
-        std::vector<key, Allocator<T>> indices;
-        std::vector<key, Allocator<T>> freeKeys;
+        using allocator_key_t  = typename std::allocator_traits<Allocator>::template rebind_alloc<key>;
+        using allocator_data_t = typename std::allocator_traits<Allocator>::template rebind_alloc<data_t>;
+
+        allocator_key_t keyAllocator_;
+        allocator_data_t dataAllocator_;
+        std::vector<data_t, allocator_data_t> objects_;
+        std::vector<key, allocator_key_t> indices_;
+        std::vector<key, allocator_key_t> freeKeys_;
         int size_;
 
         struct alignas(T) data_t {
@@ -87,153 +92,155 @@ namespace sc {
 
     // Key
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     slot_map<T, Allocator>::key::key(int pos, unsigned char gen) noexcept :
-            value((pos & GEN_MASK) + (gen << 24))
+            value_((pos & GEN_MASK) + (gen << 24))
     {}
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     int slot_map<T, Allocator>::key::pos() const noexcept {
-        return value & GEN_MASK;
+        return value_ & GEN_MASK;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     unsigned char slot_map<T, Allocator>::key::gen() const noexcept {
-        return static_cast<unsigned char>((value & ~GEN_MASK) >> 24);
+        return static_cast<unsigned char>((value_ & ~GEN_MASK) >> 24);
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     typename slot_map<T, Allocator>::key slot_map<T, Allocator>::key::nextGen() const noexcept {
         return {pos(), static_cast<unsigned char>(gen() + 1)};
     }
 
     // Slot map
 
-    template <class T, template <class> class Allocator>
-    slot_map<T, Allocator>::slot_map() noexcept :
-            objects(),
-            indices(),
-            freeKeys(),
+    template <class T, class Allocator>
+    slot_map<T, Allocator>::slot_map(Allocator const& allocator) noexcept :
+            keyAllocator_(allocator),
+            dataAllocator_(allocator),
+            objects_(dataAllocator_),
+            indices_(keyAllocator_),
+            freeKeys_(keyAllocator_),
             size_(0)
     {
         static_assert(std::is_nothrow_move_constructible_v<T> && std::is_nothrow_move_assignable_v<T>);
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline int slot_map<T, Allocator>::size() const noexcept {
         return size_;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline T& slot_map<T, Allocator>::operator[](key k) noexcept {
-        key k2 = indices[k.pos()];
+        key k2 = indices_[k.pos()];
         assert(k2.gen() == k.gen() && "The key is not valid anymore (the object has been deleted");
-        return objects[k2.pos()].val;
+        return objects_[k2.pos()].val;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline T const& slot_map<T, Allocator>::operator[](key k) const noexcept {
-        key k2 = indices[k.pos()];
+        key k2 = indices_[k.pos()];
         assert(k2.gen() == k.gen() && "The key is not valid anymore (the object has been deleted");
-        return objects[k2.pos()].val;
+        return objects_[k2.pos()].val;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     T *slot_map<T, Allocator>::try_get(key k) noexcept {
-        key k2 = indices[k.pos()];
-        return k2.gen() == k.gen() ? &objects[k2.pos()].val : nullptr;
+        key k2 = indices_[k.pos()];
+        return k2.gen() == k.gen() ? &objects_[k2.pos()].val : nullptr;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     T const *slot_map<T, Allocator>::try_get(key k) const noexcept {
-        key k2 = indices[k.pos()];
-        return k2.gen() == k.gen() ? &objects[k2.pos()].val : nullptr;
+        key k2 = indices_[k.pos()];
+        return k2.gen() == k.gen() ? &objects_[k2.pos()].val : nullptr;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline typename slot_map<T, Allocator>::iterator slot_map<T, Allocator>::begin() noexcept {
-        return iterator(objects.data());
+        return iterator(objects_.data());
     }
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline typename slot_map<T, Allocator>::iterator slot_map<T, Allocator>::end() noexcept {
-        return iterator(objects.data() + size_);
+        return iterator(objects_.data() + size_);
     }
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline typename slot_map<T, Allocator>::const_iterator slot_map<T, Allocator>::cbegin() const noexcept {
-        return const_iterator(objects.data());
+        return const_iterator(objects_.data());
     }
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline typename slot_map<T, Allocator>::const_iterator slot_map<T, Allocator>::cend() const noexcept {
-        return const_iterator(objects.data() + size_);
+        return const_iterator(objects_.data() + size_);
     }
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline typename slot_map<T, Allocator>::reverse_iterator slot_map<T, Allocator>::rbegin() noexcept {
-        return reverse_iterator(objects.back());
+        return reverse_iterator(objects_.back());
     }
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline typename slot_map<T, Allocator>::reverse_iterator slot_map<T, Allocator>::rend() noexcept {
-        return reverse_iterator(objects.data() - 1);
+        return reverse_iterator(objects_.data() - 1);
     }
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline typename slot_map<T, Allocator>::const_reverse_iterator slot_map<T, Allocator>::crbegin() const noexcept {
-        return const_reverse_iterator(objects.back());
+        return const_reverse_iterator(objects_.back());
     }
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     inline typename slot_map<T, Allocator>::const_reverse_iterator slot_map<T, Allocator>::crend() const noexcept {
-        return const_reverse_iterator(objects.data() - 1);
+        return const_reverse_iterator(objects_.data() - 1);
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     void slot_map<T, Allocator>::reserve(int capacity) {
         auto stdCapacity = static_cast<size_t>(capacity);
-        objects.reserve(stdCapacity);
-        indices.reserve(stdCapacity);
-        freeKeys.reserve(stdCapacity);
+        objects_.reserve(stdCapacity);
+        indices_.reserve(stdCapacity);
+        freeKeys_.reserve(stdCapacity);
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     void slot_map<T, Allocator>::clear() noexcept {
-        objects.clear();
-        indices.clear();
-        freeKeys.clear();
+        objects_.clear();
+        indices_.clear();
+        freeKeys_.clear();
         size_ = 0;
     }
 
-    template <class T, template <class> class Allocator> template<class...Args>
+    template <class T, class Allocator> template<class...Args>
     [[nodiscard]] typename slot_map<T, Allocator>::key slot_map<T, Allocator>::emplace(Args &&... args) {
         key k;
-        if (freeKeys.empty()) {
+        if (freeKeys_.empty()) {
             k = key(size_, 0);
-            indices.push_back(k);
+            indices_.push_back(k);
         } else {
-            k = freeKeys.back();
-            freeKeys.pop_back();
-            indices[k.pos()] = {size_, k.gen()};
+            k = freeKeys_.back();
+            freeKeys_.pop_back();
+            indices_[k.pos()] = {size_, k.gen()};
         }
-        objects.emplace_back(k, std::forward<Args>(args)...);
+        objects_.emplace_back(k, std::forward<Args>(args)...);
         ++size_;
         return k;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     void slot_map<T, Allocator>::erase(key k) noexcept {
-        key k2 = indices[k.pos()];
+        key k2 = indices_[k.pos()];
         assert(k2.gen() == k.gen() && "The key is not valid anymore (the object has been deleted");
-        data_t& data = objects[k2.pos()];
-        data_t& back = objects.back();
+        data_t& data = objects_[k2.pos()];
+        data_t& back = objects_.back();
 
         if (&data != &back) {
-            data = std::move(objects.back());
-            indices[data.k.pos()] = k2;
-            indices[k.pos()] = k2.nextGen();
+            data = std::move(objects_.back());
+            indices_[data.k.pos()] = k2;
+            indices_[k.pos()] = k2.nextGen();
         }
 
-        objects.pop_back();
+        objects_.pop_back();
         --size_;
-        freeKeys.push_back(k.nextGen());
+        freeKeys_.push_back(k.nextGen());
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     typename slot_map<T, Allocator>::key slot_map<T, Allocator>::get_key(T &val) const noexcept {
         return reinterpret_cast<data_t*>(&val)->k;
     }

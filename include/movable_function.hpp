@@ -88,6 +88,10 @@ namespace sc {
             return is_valid();
         }
 
+        void reset() noexcept {
+            destroy();
+        }
+
         void swap(movable_function& f) noexcept {
             const auto invoke  = invoke_f_;
             const auto destroy = destroy_f_;
@@ -107,7 +111,7 @@ namespace sc {
         char* data_;
 
         void destroy() noexcept {
-            if (is_valid()) {
+            if (data_) {
                 destroy_f_(data_);
                 data_ = nullptr;
             }

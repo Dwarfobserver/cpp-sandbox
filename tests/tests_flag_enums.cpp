@@ -16,7 +16,7 @@ namespace {
 }
 
 TEST_CASE("flag_enums basics", "[flag_enums]") {
-    using namespace flag_operators;
+    using namespace sc::flag_operators;
 
     auto flags = MyFlags::One | MyFlags::Four;
 

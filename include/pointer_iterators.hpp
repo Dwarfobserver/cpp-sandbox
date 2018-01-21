@@ -20,7 +20,7 @@ namespace sc {
         using reference = T&;
         using iterator_category = std::random_access_iterator_tag;
 
-        pointer_iterator() noexcept : ptr(nullptr) {}
+        pointer_iterator() noexcept : ptr(0) {}
         // Default copy, move ctors & dctor
 
         T& operator*() const noexcept { return *reinterpret_cast<T*>(ptr); }
@@ -57,7 +57,7 @@ namespace sc {
         using reference = T const&;
         using iterator_category = std::random_access_iterator_tag;
 
-        const_pointer_iterator() noexcept : ptr(nullptr) {}
+        const_pointer_iterator() noexcept : ptr(0) {}
         // Default copy, move ctors & dctor
 
         T const& operator*() const noexcept { return *reinterpret_cast<T const*>(ptr); }
@@ -94,7 +94,7 @@ namespace sc {
         using reference = T&;
         using iterator_category = std::random_access_iterator_tag;
 
-        reverse_pointer_iterator() noexcept : ptr(nullptr) {}
+        reverse_pointer_iterator() noexcept : ptr(0) {}
         // Default copy, move ctors & dctor
 
         T& operator*() const noexcept { return *reinterpret_cast<T*>(ptr); }
@@ -131,7 +131,7 @@ namespace sc {
         using reference = T const&;
         using iterator_category = std::random_access_iterator_tag;
 
-        const_reverse_pointer_iterator() noexcept : ptr(nullptr) {}
+        const_reverse_pointer_iterator() noexcept : ptr(0) {}
         // Default copy, move ctors & dctor
 
         T const& operator*() const noexcept { return *reinterpret_cast<T const*>(ptr); }

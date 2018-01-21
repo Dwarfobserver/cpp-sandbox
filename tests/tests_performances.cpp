@@ -2,7 +2,6 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-#include <utils.hpp>
 #include <lazy_ranges.hpp>
 #include <fluent_collections.hpp>
 #include <pod_vector.hpp>

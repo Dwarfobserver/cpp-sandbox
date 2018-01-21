@@ -22,6 +22,7 @@ namespace sc {
     constexpr bool is_iterator = detail::is_iterator<T>;
 
     // Is iterable
+    // TODO : Make it work for built-in arrays
 
     namespace detail {
         template <class T, class SFINAE = void>
@@ -54,9 +55,9 @@ namespace sc {
             decltype(std::declval<Container>().name()) \
         >> = true;
 
-        HAS_METHOD(emplace_back);
-        HAS_METHOD(emplace_front);
-        HAS_METHOD(emplace);
+        HAS_METHOD(emplace_back)
+        HAS_METHOD(emplace_front)
+        HAS_METHOD(emplace)
 
 #undef HAS_METHOD
 

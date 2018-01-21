@@ -2,7 +2,6 @@
 #include "catch.hpp"
 
 #include <transactional.hpp>
-#include <utils.hpp>
 
 
 namespace {

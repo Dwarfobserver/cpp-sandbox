@@ -9,6 +9,8 @@
 
 namespace sc {
 
+    // TODO In progress
+
     class terminal;
     template <class T>
     terminal& operator<<(terminal& terminal, T const& data);

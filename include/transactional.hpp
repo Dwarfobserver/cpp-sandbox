@@ -8,13 +8,14 @@
 
 namespace sc {
 
-    template <class T, template <class> class Allocator = std::allocator>
+    template <class T, class Allocator = std::allocator<T>>
     class transactional {
         class node_t;
+        using node_allocator_t = typename std::allocator_traits<Allocator>::template rebind_alloc<node_t>;
     public:
         class handle_t;
 
-        transactional() noexcept;
+        explicit transactional(Allocator const& allocator = Allocator()) noexcept;
         ~transactional() noexcept;
 
         bool empty() const noexcept;
@@ -30,7 +31,7 @@ namespace sc {
         void clear() noexcept; // Not thread-safe with another clear
 
         class handle_t {
-            friend class transactional;
+            friend class transactional<T, Allocator>;
         public:
             handle_t() noexcept;
             ~handle_t() noexcept;
@@ -45,18 +46,19 @@ namespace sc {
         private:
             explicit handle_t(node_t* node) noexcept;
 
-            node_t* node;
+            node_t* node_;
         };
     private:
-        static bool clear_rec(node_t* node) noexcept;
+        bool clear_rec(node_t* node) noexcept;
 
         struct node_t {
-            T val;
-            std::atomic<int> refCount;
-            std::atomic<node_t*> next;
+            T val_;
+            std::atomic<int> refCount_;
+            std::atomic<node_t*> next_;
         };
 
-        std::atomic<node_t*> head;
+        std::atomic<node_t*> head_;
+        node_allocator_t allocator_;
     };
 
     // ______________
@@ -64,161 +66,162 @@ namespace sc {
 
     // Transactional
 
-    template <class T, template <class> class Allocator>
-    transactional<T, Allocator>::transactional() noexcept :
-            head{nullptr}
+    template <class T, class Allocator>
+    transactional<T, Allocator>::transactional(Allocator const& allocator) noexcept :
+            head_{nullptr},
+            allocator_(allocator)
     {}
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     transactional<T, Allocator>::~transactional() noexcept {
         node_t* node;
-        auto next = head.load();
+        auto next = head_.load();
         while (next != nullptr) {
             node = next;
-            next = node->next.load();
-            node->val.~T();
-            Allocator<node_t>().deallocate(node, 1);
+            next = node->next_.load();
+            node->val_.~T();
+            std::allocator_traits<node_allocator_t>::deallocate(allocator_, node, 1);
         }
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     bool transactional<T, Allocator>::empty() const noexcept {
-        return head.load() == nullptr;
+        return head_.load() == nullptr;
     }
 
-    template <class T, template <class> class Allocator> template<class...Args>
+    template <class T, class Allocator> template<class...Args>
     typename transactional<T, Allocator>::handle_t
     transactional<T, Allocator>::create(Args&&...args) {
 #ifndef NDEBUG
         if (!empty()) throw std::logic_error{"Tried to create an already created transactional value."};
 #endif
-        node_t* pNode = Allocator<node_t>().allocate(1);
-        new (&pNode->val) T(std::forward<Args>(args)...);
-        pNode->next.store(nullptr);
-        pNode->refCount.store(1);
-        head.store(pNode);
+        node_t* pNode = std::allocator_traits<node_allocator_t>::allocate(allocator_, 1);
+        new (&pNode->val_) T(std::forward<Args>(args)...);
+        pNode->next_.store(nullptr);
+        pNode->refCount_.store(1);
+        head_.store(pNode);
 
         return handle_t{pNode};
     }
 
-    template <class T, template <class> class Allocator> template<class F>
+    template <class T, class Allocator> template<class F>
     void transactional<T, Allocator>::modify(handle_t &handle, F &&modifier) {
-        node_t* pNew = Allocator<node_t>().allocate(1);
-        pNew->refCount.store(1);
+        node_t* pNew = std::allocator_traits<node_allocator_t>::allocate(allocator_, 1);
+        pNew->refCount_.store(1);
 
-        auto pOld = head.load();
+        auto pOld = head_.load();
         // Try to commit changes
-        pNew->next.store(pOld);
-        new (&pNew->val) T(pOld->val);
-        modifier(pNew->val);
-        while (!head.compare_exchange_weak(pOld, pNew)) {
-            pNew->val.~T();
-            pNew->next.store(pOld);
-            new (&pNew->val) T(pOld->val);
-            modifier(pNew->val);
+        pNew->next_.store(pOld);
+        new (&pNew->val_) T(pOld->val_);
+        modifier(pNew->val_);
+        while (!head_.compare_exchange_weak(pOld, pNew)) {
+            pNew->val_.~T();
+            pNew->next_.store(pOld);
+            new (&pNew->val_) T(pOld->val_);
+            modifier(pNew->val_);
         }
-        handle.node->refCount.fetch_sub(1);
-        handle.node = pNew;
+        handle.node_->refCount_.fetch_sub(1);
+        handle.node_ = pNew;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     void transactional<T, Allocator>::update(handle_t &handle) {
-        auto pOld = handle.node;
-        handle.node = head.load();
-        handle.node->refCount.fetch_add(1);
-        pOld->refCount.fetch_sub(1);
+        auto pOld = handle.node_;
+        handle.node_ = head_.load();
+        handle.node_->refCount_.fetch_add(1);
+        pOld->refCount_.fetch_sub(1);
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     void transactional<T, Allocator>::clear() noexcept {
-        if (clear_rec(head.load())) {
-            head.store(nullptr);
+        if (clear_rec(head_.load())) {
+            head_.store(nullptr);
         }
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     bool transactional<T, Allocator>::clear_rec(node_t* node) noexcept {
         if (node == nullptr)
             return true;
 
-        if (!clear_rec(node->next))
+        if (!clear_rec(node->next_))
             return false;
 
-        if (node->refCount.load() == 0) {
-            node->val.~T();
-            Allocator<node_t>().deallocate(node, 1);
+        if (node->refCount_.load() == 0) {
+            node->val_.~T();
+            std::allocator_traits<node_allocator_t>::deallocate(allocator_, node, 1);
             return true;
         }
         else {
-            node->next.store(nullptr);
+            node->next_.store(nullptr);
             return false;
         }
     }
 
     // Handle
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     transactional<T, Allocator>::handle_t::handle_t() noexcept :
-            node{nullptr}
+            node_{nullptr}
     {}
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     transactional<T, Allocator>::handle_t::~handle_t() noexcept {
-        if (node != nullptr) node->refCount.fetch_sub(1);
+        if (node_ != nullptr) node_->refCount_.fetch_sub(1);
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     transactional<T, Allocator>::handle_t::handle_t(handle_t&& moved) noexcept :
-            node{moved.node}
+            node_{moved.node_}
     {
-        moved.node = nullptr;
+        moved.node_ = nullptr;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     transactional<T, Allocator>::handle_t::handle_t(handle_t const& clone) noexcept :
-            node{clone.node}
+            node_{clone.node_}
     {
-        node->refCount.fetch_add(1);
+        node_->refCount_.fetch_add(1);
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     typename transactional<T, Allocator>::handle_t&
     transactional<T, Allocator>::handle_t::operator=(handle_t&& moved) noexcept {
         if (this == &moved) return *this;
-        if (node != nullptr) node->refCount.fetch_sub(1);
-        node = moved.node;
-        moved.node = nullptr;
+        if (node_ != nullptr) node_->refCount_.fetch_sub(1);
+        node_ = moved.node_;
+        moved.node_ = nullptr;
         return *this;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     typename transactional<T, Allocator>::handle_t&
     transactional<T, Allocator>::handle_t::operator=(handle_t const& clone) noexcept {
         if (this == &clone) return *this;
-        if (clone.node != nullptr) clone.node->refCount.fetch_add(1);
-        if (node != nullptr) node->refCount.fetch_sub(1);
-        node = clone.node;
+        if (clone.node_ != nullptr) clone.node_->refCount_.fetch_add(1);
+        if (node_ != nullptr) node_->refCount_.fetch_sub(1);
+        node_ = clone.node_;
         return *this;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     transactional<T, Allocator>::handle_t::operator bool() const noexcept {
-        return node != nullptr;
+        return node_ != nullptr;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     T const& transactional<T, Allocator>::handle_t::operator*() const noexcept {
-        return node->val;
+        return node_->val_;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     T const* transactional<T, Allocator>::handle_t::operator->() const noexcept {
-        return &node->val;
+        return &node_->val_;
     }
 
-    template <class T, template <class> class Allocator>
+    template <class T, class Allocator>
     transactional<T, Allocator>::handle_t::handle_t(node_t* node) noexcept :
-            node{node}
+            node_{node}
     {}
 
 }

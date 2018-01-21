@@ -2,7 +2,6 @@
 #include "catch.hpp"
 
 #include <block_allocator.hpp>
-#include <utils.hpp>
 
 
 TEST_CASE("block_allocator static", "[block_allocator]") {
