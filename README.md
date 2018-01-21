@@ -53,3 +53,6 @@ Tests are run with Catch and can be used as a poor documentation.
 
  - eval : A function which compile and lunch a process with the source code given. This is not cross-platform nor
           efficient, and it does not have interoperability with another (or the current) process.
+
+ - movable_function : A wrapper which can accept any movable callable, with allocation optimisation for function pointers.
+                      It is useful for remplacing std::function when the functions dosen't need to be copied.

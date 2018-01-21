@@ -8,7 +8,7 @@ namespace {
 }
 
 TEST_CASE("movable_function type erasure", "[movable_function]") {
-    sc::movable_function<void(int&)> inc_f(increment);
+    sc::movable_function<void(int&)> inc_f = increment;
     int val = 2;
     inc_f(val);
     REQUIRE(val == 3);
