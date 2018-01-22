@@ -9,7 +9,7 @@
 
 namespace sc {
 
-    // TODO In progress
+    // TODO In progress, must find a good API
 
     class terminal;
     template <class T>

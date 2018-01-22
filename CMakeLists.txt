@@ -16,7 +16,7 @@ set(SOURCE_FILES
         include/block_allocator.hpp
         include/lazy_ranges.hpp
         include/transactional.hpp
-        include/optional.hpp
+        include/fast_optional.hpp
         include/stack_allocator.hpp
         include/pointer_iterators.hpp
         include/flag_enums.hpp
@@ -41,7 +41,7 @@ set(SOURCE_FILES
         tests/tests_block_allocator.cpp
         tests/tests_lazy_ranges.cpp
         tests/tests_transactional.cpp
-        tests/tests_optional.cpp
+        tests/tests_fast_optional.cpp
         tests/tests_flag_enums.cpp
 #       tests/tests_serializer_span.cpp
         tests/tests_pod_vector.cpp

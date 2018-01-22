@@ -6,15 +6,18 @@
 
 namespace sc {
 
-    // Goal
+    // TODO In rework. Goal :
+    // Let user implement operator & : useful for
+    // input (>>),
+    // output (<<) and
+    // serialized size (+).
 
-    struct bytes_span;
-    struct bytes_ispan;
-    struct bytes_ospan;
+/*
 
     class my_str {
     public:
-        friend bytes_span& operator&(bytes_span& span, my_str& str) {
+        template <class T>
+        friend T& operator&(T& span, my_str& str) {
             return span & str;
         }
     private:
@@ -32,6 +35,7 @@ namespace sc {
         char const* str;
     };
 
+*/
 
     struct bytes_span {
         void* begin;

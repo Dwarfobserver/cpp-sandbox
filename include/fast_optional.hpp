@@ -25,19 +25,19 @@ namespace sc {
     struct optional_emplace_tag {};
 
     template <auto EMPTY_VALUE>
-    class optional {
+    class fast_optional {
     public:
         using value_type = decltype(EMPTY_VALUE);
 
-        constexpr optional() noexcept : val{EMPTY_VALUE} {}
-        constexpr optional(optional_emplace_tag&&) noexcept : val{} {}
+        constexpr fast_optional() noexcept : val{EMPTY_VALUE} {}
+        constexpr fast_optional(optional_emplace_tag) noexcept : val{} {}
 
         template <class Arg, class...Args>
-        constexpr optional(Arg&& arg, Args&&...args) noexcept :
+        constexpr fast_optional(Arg&& arg, Args&&...args) noexcept :
                 val{std::forward<Arg>(arg), std::forward<Args>(args)...} {}
 
-        constexpr optional& operator=(optional opt) noexcept { val = opt.val; return *this; }
-        constexpr optional& operator=(value_type val) noexcept { this->val = val; return *this; }
+        constexpr fast_optional& operator=(fast_optional opt) noexcept { val = opt.val; return *this; }
+        constexpr fast_optional& operator=(value_type val) noexcept { this->val = val; return *this; }
 
         value_type& operator*() noexcept { return val; }
         constexpr value_type operator*() const noexcept { return val; }

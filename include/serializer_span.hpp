@@ -12,6 +12,7 @@
 
 namespace sc::serializer {
 
+    // TODO In rework
     // A span capacity is determined by it's storage, policy and category (io flags)
 
     enum class storage {
