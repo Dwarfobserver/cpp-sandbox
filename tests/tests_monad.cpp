@@ -4,7 +4,7 @@
 #include <numeric>
 
 
-TEST_CASE("optionals monad", "[monad]") {
+TEST_CASE("monad optionals", "[monad]") {
     using namespace sc::monad_operator;
 
     static_assert(!sc::is_monad<std::allocator>);
@@ -26,14 +26,14 @@ TEST_CASE("optionals monad", "[monad]") {
     REQUIRE(*(val | to_str | length) == 4);
 }
 
-TEST_CASE("optionals containers", "[monad]") {
+TEST_CASE("monad containers", "[monad]") {
     using namespace sc::monad_operator;
 
     static_assert(sc::is_iterator<std::vector<float>::iterator>);
     static_assert(sc::is_iterable<std::vector<float>>);
     static_assert(sc::can_emplace_in<std::vector<float>>);
 
-    auto to_str = [] (auto x) {
+    auto to_str = [] (auto const& x) {
         auto str = std::to_string(x);
         return std::vector<char>(str.begin(), str.end());
     };
@@ -45,6 +45,6 @@ TEST_CASE("optionals containers", "[monad]") {
     REQUIRE(std::accumulate(res.begin(), res.end(), 0) == 1+5 + 2+4 + 7);
 
     vals.clear();
-    res = vals | to_str | to_int | [] (auto) { return 42; };
+    res = vals | to_str | to_int | [] (auto&&) { return 42; };
     REQUIRE(std::accumulate(res.begin(), res.end(), 0) == 0);
 }
