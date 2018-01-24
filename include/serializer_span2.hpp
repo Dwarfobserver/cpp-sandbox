@@ -54,186 +54,190 @@ namespace sc {
 
     /// Implementation
 
-    // Resolver function
+    // Spans for implementation
+    // Used to recognize operation categories (and compute them).
 
     namespace detail {
-        template<class Span, class T, class SFINAE = void>
-        struct span_operation;
-
-        template <class Span, class T>
-        constexpr auto& operator&(Span& span, T& data) {
-            return span_operation<Span, T>::invoke(span, data);
+        struct span_input {
+            std::byte const* begin;
+            std::byte const* end;
         };
-    }
-
-    // Operation types
-
-    namespace detail {
-        template<class T, class SFINAE = void>
-        struct input_operation;
-        template<class T, class SFINAE = void>
-        struct output_operation;
-        template<class T, class SFINAE = void>
-        struct constexpr_size_operation;
-        template<class T, class SFINAE = void>
-        struct size_operation {
-            static constexpr int invoke(T const&) {
-                static_assert(has_constexpr_serialized_size<T>,
-                              "[T] do not have compile-time or runtime size operation.");
-                return serialized_size<T>();
-            }
+        struct span_output {
+            std::byte* begin;
+            std::byte* end;
         };
-    }
-
-    // Span types
-
-    namespace detail {
-        struct input_span {
-            std::byte const *begin;
-            std::byte const *end;
-        };
-        struct output_span {
-            std::byte *begin;
-            std::byte *end;
-        };
-        struct size_accumulator {
+        struct span_size {
             int value;
         };
-        template <int N>
-        struct constexpr_size_accumulator {
-            using is_constexpr_size_accumulator = std::true_type;
-            static constexpr constexpr_size_accumulator instance{};
-            static constexpr int value = N;
+        struct span_constexpr_size {};
+    }
+
+    // Operation type
+    // Used by expression templates to compute the result.
+
+    namespace detail::span {
+        template <class Span, class T, class SFINAE = void>
+        struct operation;
+    }
+
+    // Expression generator
+    // Used by the operator '&' to build expression templates.
+
+    namespace detail::span {
+        template <class Expression, class T, class SFINAE = void>
+        struct expression_generator;
+    }
+
+    // Expression templates
+    // Built at compilation to compute the result recursively.
+    // They were needed to match the 'constexpr' signature of the operator '&'.
+
+    namespace detail::span {
+        template <class Span>
+        struct expression {
+            using span_type = Span;
+
+            constexpr explicit expression(Span& span) :
+                    span_(span) {}
+
+            void invoke() const { }
+            constexpr Span& span() { return span_; }
+
+            Span& span_;
+        };
+
+        template <class Expression, class T>
+        struct expression_rec {
+            using span_type = typename Expression::span_type;
+
+            constexpr expression_rec(Expression& expression, T& data) :
+                    expression_(expression), data_(data) {}
+
+            void invoke() const {
+                operation<span_type, T>::invoke(span(), data_);
+                expression_.invoke();
+            }
+            constexpr span_type& span() { return expression_.span(); }
+
+            Expression& expression_;
+            T& data_;
+        };
+
+        // The constexpr size have a different signature (less parameters and constexpr result).
+
+        struct constexpr_size_expression {
+            using span_type = span_constexpr_size;
+            static constexpr int value = 0;
+        };
+        template <class Expression, class T>
+        struct constexpr_size_expression_rec {
+            using span_type = span_constexpr_size;
+            static constexpr int value = operation<span_type, T>::invoke() + Expression::value;
         };
     }
 
-    // Compile-time size detection
+    // Expression generators implementation (for the 4 operations category).
 
-    template <class T>
-    constexpr bool has_constexpr_serialized_size<T, std::enable_if_t<
-        std::is_integral_v<decltype(
-            std::declval<detail::constexpr_size_accumulator<0>&>() & std::declval<T&>()
-        )>
-    >> = true;
+    namespace detail::span {
 
-    // 'span_operation' redirection
-
-    namespace detail {
-        template <class T>
-        struct span_operation<input_span, T, void> {
-            static input_span& invoke(input_span& span, T& data) {
-                input_operation<T>::invoke(span, data);
-                return span;
+        template <class Expression, class T>
+        struct expression_generator<Expression, T, void/*std::enable_if_t<
+                std::is_same_v<Expression::span_type, span_input>  ||
+                std::is_same_v<Expression::span_type, span_output> ||
+                std::is_same_v<Expression::span_type, span_size>
+        >*/> {
+            static constexpr auto invoke(Expression &expression, T &data)
+                    -> expression_rec<Expression, T> {
+                return { expression, data };
             }
         };
-        template <class T>
-        struct span_operation<output_span, T, void> {
-            static output_span& invoke(output_span& span, T& data) {
-                output_operation<T>::invoke(span, data);
-                return span;
-            }
-        };
-        template <class T>
-        struct span_operation<size_accumulator, T, void> {
-            static size_accumulator& invoke(size_accumulator& acc, T& data) {
-                acc.value += size_operation<T>::invoke(data);
-                return acc;
-            }
-        };
-        template <class Acc, class T>
-        struct span_operation<Acc, T, std::enable_if_t<
-            std::is_same_v<Acc::is_constexpr_size_accumulator, std::true_type>
+
+        template <class Expression, class T>
+        struct expression_generator<Expression, T, std::enable_if_t<
+                std::is_same_v<Expression::span_type, span_constexpr_size>
         >> {
-            static constexpr auto& invoke(Acc&, T&) {
-                return constexpr_size_accumulator<
-                    Acc::value + constexpr_size_operation<T>::invoke()
-                >::instance;
+            static constexpr auto invoke(Expression&, T&) {
+                return constexpr_size_expression_rec<Expression, T>();
             }
         };
     }
 
-    // Public operators implementation
+    // The operator '&' with no overload nor specialization, returning an expression template.
+    // Picked after used-defined operators on serializable types.
 
-    // '<<' redirection
+    namespace detail::span {
+        template <class Expression, class T>
+        constexpr auto operator&(Expression& expression, T& data) {
+            return expression_generator<Expression, T>::invoke(expression, data);
+        };
+    }
 
-    template <class T>
-    binary_ospan& operator<<(binary_ospan& span, T const& data) {
-        return reinterpret_cast<binary_ospan&>(
-                reinterpret_cast<detail::output_span&>(span) & const_cast<T&>(data));
-    };
-    template <class T>
-    binary_span& operator<<(binary_span& span, T const& data) {
-        return reinterpret_cast<binary_span&>(
-                reinterpret_cast<detail::output_span&>(span) & const_cast<T&>(data));
-    };
+    // Public operations implementation
 
-    // '>>' redirection
+    // Common implementation to the 3 runtime operations.
+
+    namespace detail::span {
+        template <class Span, class T>
+        void invoke_operation(Span& span, T& data) {
+            constexpr auto expr = expression<Span>{ span };
+            constexpr auto expr_rec = expr & data;
+            expr_rec.invoke();
+        };
+    }
+
+    // Input
 
     template <class T>
     binary_ispan& operator>>(binary_ispan& span, T& data) {
-        return reinterpret_cast<binary_ispan&>(
-                reinterpret_cast<detail::input_span&>(span) & data);
+        auto& span_input = reinterpret_cast<detail::span_input&>(span);
+        detail::span::invoke_operation(span_input, data);
+        return span;
     };
     template <class T>
     binary_span& operator>>(binary_span& span, T& data) {
-        return reinterpret_cast<binary_span&>(
-                reinterpret_cast<detail::input_span&>(span) & data);
+        auto& span_input = reinterpret_cast<detail::span_input&>(span);
+        detail::span::invoke_operation(span_input, data);
+        return span;
     };
 
-    // Runtime size redirection
+    // Output
+
+    template <class T>
+    binary_ospan& operator<<(binary_ospan& span, T const& data) {
+        auto& span_output = reinterpret_cast<detail::span_output&>(span);
+        detail::span::invoke_operation(span_output, const_cast<T&>(data));
+        return span;
+    };
+    template <class T>
+    binary_span& operator<<(binary_span& span, T const& data) {
+        auto& span_output = reinterpret_cast<detail::span_output&>(span);
+        detail::span::invoke_operation(span_output, const_cast<T&>(data));
+        return span;
+    };
+
+    // Runtime size
 
     template <class T>
     int serialized_size(T const& data) {
-        detail::size_accumulator acc{0};
-        return (acc & data).value;
-    }
+        detail::span_size accumulator{0};
+        detail::span::invoke_operation(accumulator, const_cast<T&>(data));
+        return accumulator.value;
+    };
 
-    // Compile-time size redirection
+    // Constexpr size
 
     template <class T>
     constexpr int serialized_size() {
-        static_assert(has_constexpr_serialized_size<T>,
-                      "'T' do not have compile-time size operation.");
-
-        using accumulator_t = typename std::remove_reference_t<decltype(
-        std::declval<detail::constexpr_size_accumulator<0>&>() & std::declval<T&>()
+        using expression_t = std::remove_reference_t<decltype(
+            std::declval<detail::span::constexpr_size_expression&>() & std::declval<T&>()
         )>;
-        return accumulator_t::value;
-    }
-
-    // Trivial types operations
-
-    template <class T>
-    constexpr bool is_trivially_serializable = false;
-
-    namespace detail {
-        template <class T>
-        struct constexpr_size_operation<T, std::enable_if_t<
-            is_trivially_serializable<T>
-        >> {
-            static constexpr int invoke() { return sizeof(T); }
-        };
-        template <class T>
-        struct input_operation<T, std::enable_if_t<
-                is_trivially_serializable<T>
-        >> {
-            static constexpr void invoke(input_span& span, T& data) {
-                data = *reinterpret_cast<T const*>(span.begin);
-                span.begin += serialized_size<T>();
-            }
-        };
-        template <class T>
-        struct output_operation<T, std::enable_if_t<
-                is_trivially_serializable<T>
-        >> {
-            static constexpr void invoke(output_span& span, T const& data) {
-                *reinterpret_cast<T*>(span.begin) = data;
-                span.begin += serialized_size<T>();
-            }
-        };
+        return expression_t::value;
     }
 
     // Trivial types specializations
+
+    template <class T>
+    constexpr bool is_trivially_serializable = false;
 
     template <> constexpr bool is_trivially_serializable<bool> = true;
 
@@ -246,5 +250,41 @@ namespace sc {
     template <> constexpr bool is_trivially_serializable<uint16_t> = true;
     template <> constexpr bool is_trivially_serializable<uint32_t> = true;
     template <> constexpr bool is_trivially_serializable<uint64_t> = true;
+
+    // Trivial types expressions
+
+    namespace detail::span {
+        template <class T>
+        struct operation<span_input, T, std::enable_if_t<
+                is_trivially_serializable<T>
+        >> {
+            static void invoke(span_input& span, T& data) {
+                data = *reinterpret_cast<T const*>(span.begin);
+                span.begin += serialized_size<T>();
+            }
+        };
+        template <class T>
+        struct operation<span_output, T, std::enable_if_t<
+                is_trivially_serializable<T>
+        >> {
+            static void invoke(span_output& span, T& data) {
+                *reinterpret_cast<T*>(span.begin) = data;
+                span.begin += serialized_size<T>();
+            }
+        };
+        template <class T>
+        struct operation<span_size, T, std::enable_if_t<
+                is_trivially_serializable<T>
+        >> {
+            static void invoke(span_size& span, T&) { span.value += sizeof(T); }
+        };
+        template <class T>
+        struct operation<span_constexpr_size, T, std::enable_if_t<
+                is_trivially_serializable<T>
+        >> {
+            static constexpr int invoke() { return sizeof(T); }
+        };
+    }
+
 
 }

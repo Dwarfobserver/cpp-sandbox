@@ -31,8 +31,8 @@ TEST_CASE("serializer_span2 basics", "[serializer_span2]") {
     std::byte storage[20];
 
     sc::binary_ospan ospan{storage};
-    point p{2, 3};
-    ospan << p;
+    //point p{2, 3};
+    ospan << 32;/*
     static_assert(sc::serialized_size<point>() == 2 * sizeof(uint8_t));
     REQUIRE(ospan.begin - storage == sc::serialized_size<point>());
 
@@ -40,9 +40,9 @@ TEST_CASE("serializer_span2 basics", "[serializer_span2]") {
     p = point{};
     ispan >> p;
     REQUIRE(p.x == 2);
-    REQUIRE(p.y == 3);
+    REQUIRE(p.y == 3);*/
 }
-
+/*
 TEST_CASE("serializer_span2 recurrence", "[serializer_span2]") {
     std::byte storage[20];
 
@@ -58,4 +58,4 @@ TEST_CASE("serializer_span2 recurrence", "[serializer_span2]") {
     REQUIRE(t.p1.x == 1);
     REQUIRE(t.p2.y == 4);
 }
-
+*/
