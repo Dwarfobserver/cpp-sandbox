@@ -39,6 +39,19 @@ namespace sc {
     template <class T>
     constexpr bool is_iterable = detail::is_iterable<T>;
 
+    namespace detail {
+        template <class T, class SFINAE = void>
+        constexpr bool has_continuous_storage = false;
+
+        template <class T>
+        constexpr bool has_continuous_storage<T, std::enable_if_t<
+            std::is_integral_v<decltype(std::declval<T>().size())> &&
+            std::is_pointer_v<decltype(std::declval<T>().data())>
+        >> = true;
+    }
+    template <class T>
+    constexpr bool has_continuous_storage = detail::has_continuous_storage<T>;
+
     // Can emplace in
 
     namespace detail {

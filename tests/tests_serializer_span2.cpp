@@ -4,34 +4,12 @@
 
 
 namespace {
-    struct point {
-        uint8_t x;
-        uint8_t y;
-    };
-
-    template<class Span>
-    auto& operator&(Span& span, point& p) {
-        return span & p.x & p.y;
-    }
-
-    struct triangle {
-        point p1;
-        point p2;
-        point p3;
-    };
-
-    template<class Span>
-    auto& operator&(Span& span, triangle& t) {
-        return span & t.p1 & t.p2 & t.p3;
-    }
-
     struct point3D {
         float x, y, z;
     };
 }
-
 namespace sc {
-    template <> constexpr bool is_trivially_serializable<point3D> = true;
+    template<> constexpr bool is_trivially_serializable<point3D> = true;
 }
 
 TEST_CASE("serializer_span2 trivial types", "[serializer_span2]") {
@@ -52,23 +30,28 @@ TEST_CASE("serializer_span2 trivial types", "[serializer_span2]") {
     REQUIRE(p.z == 3.f);
 }
 
-TEST_CASE("serializer_span2 basics", "[serializer_span2]") {
-    REQUIRE(sc::serialized_size<point>() == 2 * sizeof(uint8_t));
+namespace {
+    struct point {
+        uint8_t x;
+        uint8_t y;
+    };
+    template<class Span>
+    auto &operator&(Span &span, point &p) {
+        return span & p.x & p.y;
+    }
 
-    std::byte storage[20];
-    sc::binary_ospan ospan{storage};
-    point p{2, 3};
-    ospan << p;
-    REQUIRE(ospan.begin - storage == sc::serialized_size<point>());
-
-    sc::binary_ispan ispan{storage};
-    p = point{};
-    ispan >> p;
-    REQUIRE(p.x == 2);
-    REQUIRE(p.y == 3);
+    struct triangle {
+        point p1;
+        point p2;
+        point p3;
+    };
+    template<class Span>
+    auto &operator&(Span &span, triangle &t) {
+        return span & t.p1 & t.p2 & t.p3;
+    }
 }
 
-TEST_CASE("serializer_span2 recurrence", "[serializer_span2]") {
+TEST_CASE("serializer_span2 basic type", "[serializer_span2]") {
     std::byte storage[20];
 
     sc::binary_span span{storage};
@@ -81,4 +64,18 @@ TEST_CASE("serializer_span2 recurrence", "[serializer_span2]") {
     span >> t;
     REQUIRE(t.p1.x == 1);
     REQUIRE(t.p2.y == 4);
+}
+
+TEST_CASE("serializer_span2 continuous storages", "[serializer_span2]") {
+    std::byte storage[20];
+
+    sc::binary_span span{storage};
+    std::string str{"Hello world !"};
+    span << str;
+    REQUIRE(span.begin - storage == sc::serialized_size(str));
+
+    span.begin = storage;
+    str.clear();
+    span >> str;
+    REQUIRE(str == "Hello World !");
 }

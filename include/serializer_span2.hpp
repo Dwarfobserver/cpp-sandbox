@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <type_traits.hpp>
 
 
 namespace sc {
@@ -48,8 +49,8 @@ namespace sc {
     template <class T> int serialized_size(T const& data);
 
     /// Traits
+    // TODO is_serializable, has_constexpr_serializable_size
 
-    template <class T> constexpr bool is_serializable = false;
     template <class T> constexpr bool is_trivially_serializable = false;
 
     /// Implementation
@@ -86,6 +87,14 @@ namespace sc {
             static constexpr auto& invoke(Span&, T&) {
                 constexpr auto size = Span::value + operation<constexpr_accumulator_tag, T>::invoke();
                 return constexpr_accumulator<size>::instance;
+            }
+        };
+
+        template <class T>
+        struct operation<accumulator, T, void> {
+            static accumulator& invoke(accumulator& acc, T&) {
+                acc.value += serialized_size<T>();
+                return acc;
             }
         };
     }
@@ -164,7 +173,7 @@ namespace sc {
     template <> constexpr bool is_trivially_serializable<float>  = true;
     template <> constexpr bool is_trivially_serializable<double> = true;
 
-    // Trivial types expressions
+    // Trivial types operations
 
     namespace detail::span {
         template <class T>
@@ -178,12 +187,6 @@ namespace sc {
             }
         };
         template <class T>
-        struct operation<constexpr_accumulator_tag, T, std::enable_if_t<
-                is_trivially_serializable<T>
-        >> {
-            static constexpr int invoke() { return sizeof(T); }
-        };
-        template <class T>
         struct operation<output, T, std::enable_if_t<
                 is_trivially_serializable<T>
         >> {
@@ -194,47 +197,81 @@ namespace sc {
             }
         };
         template <class T>
-        struct operation<accumulator, T, std::enable_if_t<
+        struct operation<constexpr_accumulator_tag, T, std::enable_if_t<
                 is_trivially_serializable<T>
         >> {
-            static accumulator& invoke(accumulator& span, T&) {
-                span.value += sizeof(T);
+            static constexpr int invoke() { return sizeof(T); }
+        };
+    }
+
+    // Traits for containers
+
+    namespace detail::span {
+
+        template <class T, class SFINAE = void>
+        constexpr bool contains_trivial = false;
+        template <class T>
+        constexpr bool contains_trivial<T, std::enable_if_t<
+                !is_trivially_serializable<T> &&
+                is_trivially_serializable<T::value_type>
+        >> = true;
+
+
+        template <class T, class SFINAE = void>
+        constexpr bool contains_non_trivial = false;
+        template <class T>
+        constexpr bool contains_non_trivial<T, std::enable_if_t<
+                !is_trivially_serializable<T> &&
+                !is_trivially_serializable<T::value_type>
+        >> = true;
+
+        // TODO Requires resize()
+    }
+
+    static_assert(detail::span::contains_trivial<std::vector<char>>);
+
+    // Continuous storage operations
+
+    namespace detail::span {
+        template <class T>
+        struct operation<input, T, std::enable_if_t<
+                has_continuous_storage<T> &&
+                contains_trivial<T>
+        >> {
+            static input& invoke(input& span, T& data) {
+                uint32_t size;
+                span & size;
+                data.resize(size);
+                const auto serializedSize = serialized_size(data);
+                memcpy(data.data(), span.begin, (size_t) serializedSize);
+                span.begin += serializedSize;
                 return span;
             }
         };
-    }
-
-    // TODO Built-in arrays
-/*
-    template <class T, int N>
-    constexpr bool is_serializable<T(&)[N]> = is_serializable<T>;
-
-    namespace detail::span {
-        template <class T, int N>
-        struct operation<input, T(&)[N], std::enable_if_t<
-                is_serializable<T(&)[N]>
+        template <class T>
+        struct operation<output, T, std::enable_if_t<
+                has_continuous_storage<T> &&
+                contains_trivial<T>
         >> {
-            static void invoke(input& span, T& data) {
-                std::copy(span)
-                data = *reinterpret_cast<T const*>(span.begin);
-                span.begin += serialized_size<T>();
+            static output& invoke(output& span, T& data) {
+                uint32_t size = data.size();
+                span & size;
+                const auto serializedSize = serialized_size(data);
+                memcpy(span.begin, data.data(), (size_t) serializedSize);
+                span.begin += serializedSize;
+                return span;
             }
         };
-        template <class T, int N>
-        struct operation<output, T(&)[N], std::enable_if_t<
-                is_serializable<T(&)[N]>
+        template <class T>
+        struct operation<accumulator, T, std::enable_if_t<
+                has_continuous_storage<T> &&
+                contains_trivial<T>
         >> {
-            static void invoke(output& span, T& data) {
-                *reinterpret_cast<T*>(span.begin) = data;
-                span.begin += serialized_size<T>();
+            static accumulator& invoke(accumulator& acc, T& data) {
+                acc.value += data.size() * sizeof(T);
+                return acc;
             }
         };
-        template <class T, int N>
-        struct operation<accumulator, T(&)[N], std::enable_if_t<
-                is_serializable<T(&)[N]>
-        >> {
-            static void invoke(accumulator& span, T&) { span.value += sizeof(T); }
-        };
     }
-*/
+
 }
