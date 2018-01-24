@@ -36,7 +36,20 @@ namespace sc {
 
 TEST_CASE("serializer_span2 trivial types", "[serializer_span2]") {
     std::byte storage[20];
-    sc::binary_ospan ospan{storage};
+    sc::binary_span span{storage};
+    span << 1.f << 2.f << 3.f;
+
+    static_assert(sc::serialized_size<float>() == 4);
+    static_assert(sc::serialized_size<point3D>() == sc::serialized_size<float>() * 3);
+    REQUIRE(span.begin == storage + sc::serialized_size<point3D>());
+
+    point3D p {};
+    span.begin = storage;
+    span >> p;
+
+    REQUIRE(p.x == 1.f);
+    REQUIRE(p.y == 2.f);
+    REQUIRE(p.z == 3.f);
 }
 
 TEST_CASE("serializer_span2 basics", "[serializer_span2]") {

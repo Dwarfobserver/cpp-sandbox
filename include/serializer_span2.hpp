@@ -44,7 +44,8 @@ namespace sc {
 
     /// Get the serialized size
 
-    template <class T> int serialized_size(T const& data = T());
+    template <class T> constexpr int serialized_size();
+    template <class T> int serialized_size(T const& data);
 
     /// Traits
 
@@ -67,13 +68,26 @@ namespace sc {
         struct accumulator {
             int value;
         };
+        template <size_t N>
+        struct constexpr_accumulator {
+            using is_constexpr_accumulator = std::true_type;
+            static constexpr size_t value = N;
+            static constexpr constexpr_accumulator instance {};
+        };
+        struct constexpr_accumulator_tag {};
     }
 
     // Operation type
+    // Compile-time size operation resolution by default
 
     namespace detail::span {
         template <class Span, class T, class SFINAE = void>
-        struct operation;
+        struct operation {
+            static constexpr auto& invoke(Span&, T&) {
+                constexpr auto size = Span::value + operation<constexpr_accumulator_tag, T>::invoke();
+                return constexpr_accumulator<size>::instance;
+            }
+        };
     }
 
     // The operator '&' with no overload nor specialization.
@@ -82,8 +96,7 @@ namespace sc {
     namespace detail::span {
         template <class Span, class T>
         auto& operator&(Span& span, T& data) {
-            operation<Span, T>::invoke(span, data);
-            return span;
+            return operation<Span, T>::invoke(span, data);
         };
     }
 
@@ -124,6 +137,17 @@ namespace sc {
         return accumulator.value;
     };
 
+    // Compile-time size
+
+    template <class T>
+    constexpr int serialized_size() {
+        using acccumulator_t = typename detail::span::constexpr_accumulator<0>;
+        using result_t = typename std::remove_reference_t<decltype(
+            std::declval<acccumulator_t&>() & std::declval<T&>()
+        )>;
+        return result_t::value;
+    }
+
     // Trivial types specializations
 
     template <> constexpr bool is_trivially_serializable<int8_t>  = true;
@@ -147,25 +171,36 @@ namespace sc {
         struct operation<input, T, std::enable_if_t<
                 is_trivially_serializable<T>
         >> {
-            static void invoke(input& span, T& data) {
+            static input& invoke(input& span, T& data) {
                 data = *reinterpret_cast<T const*>(span.begin);
                 span.begin += serialized_size<T>();
+                return span;
             }
+        };
+        template <class T>
+        struct operation<constexpr_accumulator_tag, T, std::enable_if_t<
+                is_trivially_serializable<T>
+        >> {
+            static constexpr int invoke() { return sizeof(T); }
         };
         template <class T>
         struct operation<output, T, std::enable_if_t<
                 is_trivially_serializable<T>
         >> {
-            static void invoke(output& span, T& data) {
+            static output& invoke(output& span, T& data) {
                 *reinterpret_cast<T*>(span.begin) = data;
                 span.begin += serialized_size<T>();
+                return span;
             }
         };
         template <class T>
         struct operation<accumulator, T, std::enable_if_t<
                 is_trivially_serializable<T>
         >> {
-            static void invoke(accumulator& span, T&) { span.value += sizeof(T); }
+            static accumulator& invoke(accumulator& span, T&) {
+                span.value += sizeof(T);
+                return span;
+            }
         };
     }
 
