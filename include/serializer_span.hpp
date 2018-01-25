@@ -1,324 +1,277 @@
 
 #pragma once
 
-#include <utils.hpp>
-#include <cstddef>
 #include <type_traits>
-#include <utility>
-#include <algorithm>
-#include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
+#include <type_traits.hpp>
 
 
-namespace sc::serializer {
+namespace sc {
 
-    // TODO In rework
-    // A span capacity is determined by it's storage, policy and category (io flags)
+    /// Make a class serializable :
+    /// Implement the operator& with a template class and this signature :
+    ///
+    /// template <class Span>
+    /// constexpr auto& operator&(Span& span, MyClass& data);
+    ///
+    /// Look in 'tests_serializer_span.cpp' for working examples.
 
-    enum class storage {
-        invalid = 0,
-        binary,
+    // Available spans
+
+    struct binary_ispan {
+        std::byte const* begin;
+        std::byte const* end;
     };
-    enum class policy {
-        invalid = 0,
-        throwing,
-        unsafe,
-        safe,
+    struct binary_ospan {
+        std::byte* begin;
+        std::byte* end;
     };
-    struct category {
-        // Flag enum
-        enum type : int {
-            in  = 1 << 0,
-            out = 1 << 1
+    struct binary_span {
+        std::byte* begin;
+        std::byte* end;
+    };
+
+    /// Input operators
+
+    template <class T> binary_ospan& operator<<(binary_ospan& span, T const& data);
+    template <class T> binary_span&  operator<<(binary_span& span,  T const& data);
+
+    /// Output operators
+
+    template <class T> binary_ispan& operator>>(binary_ispan& span, T& data);
+    template <class T> binary_span&  operator>>(binary_span& span,  T& data);
+
+    /// Get the serialized size
+
+    template <class T> constexpr int serialized_size();
+    template <class T> int serialized_size(T const& data);
+
+    /// Traits
+    // TODO is_serializable, has_constexpr_serializable_size, is_serializer_span
+
+    template <class T> constexpr bool is_trivially_serializable = false;
+
+    /// Implementation
+
+    // Spans types used to recognize operation type.
+
+    namespace detail::span {
+        struct input {
+            std::byte const* begin;
+            std::byte const* end;
         };
-    };
-
-    class overflow_exception : std::runtime_error {
-    public:
-        explicit overflow_exception(int dataSize, int spanSize, int category_op) :
-                std::runtime_error{
-                        "Tried to serialize data of size " + std::to_string(dataSize) +
-                        (category_op == category::in ? " in" : " from") +
-                        " a span serializer of size " + std::to_string(spanSize)
-        }, spanSize{spanSize}, dataSize{dataSize} {}
-        int spanSize;
-        int dataSize;
-    };
-
-    namespace detail {
-        // Tag inheritance to detect a category
-
-        template<storage Storage>
-        struct span_storage {};
-
-        template<policy Policy>
-        struct span_policy {};
-
-        template<>
-        struct span_policy<policy::safe> {};
-
-        template<int IO>
-        struct span_category {};
-        template<>
-        struct span_category<category::in | category::out> :
-                span_category<category::in>, span_category<category::out> {};
-
-        // Detect if has a trait
-
-        template<class Span, policy Policy>
-        constexpr bool has_policy =
-                std::is_base_of_v<span_policy<Policy>, Span>;
-
-        template<class Span, storage Storage>
-        constexpr bool has_storage =
-                std::is_base_of_v<span_storage<Storage>, Span>;
-
-        template<class Span, int IO>
-        constexpr bool has_category =
-                std::is_base_of_v<span_category<IO>, Span>;
-
-        // Detect spans
-
-        template <class Span, class SFINAE = void>
-        constexpr bool is_span = false;
-
-        template <class Span>
-        constexpr bool is_span<Span, std::enable_if_t<
-                has_category<Span, category::in> ||
-                has_category<Span, category::out>
-        >> = true;
-
-        // Base span class
-
-        template <storage Storage, policy Policy, int Category>
-        struct span : span_policy<Policy>, span_storage<Storage>, span_category<Category> {
-            static constexpr storage storage_type = Storage;
-            static constexpr policy policy_type = Policy;
-            static constexpr int category_type = Category;
-
-            span() : span_policy<Policy>(),
-                     begin{nullptr},
-                     end{nullptr} {}
-
-            span(void* begin, void const* end) :
-                    span_policy<Policy>(),
-                    begin{reinterpret_cast<std::byte*>(begin)},
-                    end{reinterpret_cast<std::byte const*>(end)} {}
-
-            std::byte *begin;
-            std::byte const *end;
-
-            int size() const noexcept { return static_cast<int>(end - begin); }
-
-            // Any span can be constructed from / assigned to another span
-
-            template<class OtherSpan>
-            explicit span(OtherSpan const &rhs) : begin{rhs.begin}, end{rhs.end} {};
-
-            template<class OtherSpan>
-            return_if_t<is_span<OtherSpan>,
-            span>& operator=(OtherSpan const &rhs) {
-                begin = rhs.begin;
-                end = rhs.end;
-                return *this;
-            }
-
-            // Casts to another spans
-
-            template <storage NewStorage>
-            auto cast_to() { return span<NewStorage, Policy, Category>(this); }
-            template <policy NewPolicy>
-            auto cast_to() { return span<Storage, NewPolicy, Category>(this); }
-            template <int NewCategory>
-            auto cast_to() { return span<Storage, Policy, NewCategory>(this); }
-            template <storage NewStorage, policy NewPolicy>
-            auto cast_to() { return span<NewStorage, NewPolicy, Category>(this); }
+        struct output {
+            std::byte* begin;
+            std::byte* end;
         };
+        struct accumulator {
+            int value;
+        };
+        template <size_t N>
+        struct constexpr_accumulator {
+            using is_constexpr_accumulator = std::true_type;
+            static constexpr size_t value = N;
+            static constexpr constexpr_accumulator instance {};
+        };
+        struct constexpr_accumulator_tag {};
     }
 
-    // Convenient typedefs
+    // Operation type
+    // Compile-time size operation resolution by default
 
-    template <storage Storage, policy Policy>
-    using ispan = detail::span<Storage, Policy, category::in>;
-    template <storage Storage, policy Policy>
-    using ospan = detail::span<Storage, Policy, category::out>;
-    template <storage Storage, policy Policy>
-    using iospan = detail::span<Storage, Policy, category::in | category::out>;
-
-    template <policy Policy>
-    using binary_ispan =  ispan<storage::binary, Policy>;
-    template <policy Policy>
-    using binary_ospan =  ospan<storage::binary, Policy>;
-    template <policy Policy>
-    using binary_iospan = iospan<storage::binary, Policy>;
-
-    namespace detail {
-
-        // Serializable traits class
-
-        template <storage Storage, class T>
-        struct default_traits;
-
-        // TODO Make a macro to generate default types
+    namespace detail::span {
+        template <class Span, class T, class SFINAE = void>
+        struct operation {
+            static constexpr auto& invoke(Span&, T&) {
+                constexpr auto size = Span::value + operation<constexpr_accumulator_tag, T>::invoke();
+                return constexpr_accumulator<size>::instance;
+            }
+        };
 
         template <class T>
-        struct default_binary_traits {
-            template <class Span>
-            static void out(Span& span, T const& val);
-            template <class Span>
-            static void in(Span& span, T& val);
-        };
-
-        template <class T> template<class Span>
-        void default_binary_traits<T>::out(Span &span, const T &val) {
-            if constexpr (Span::policy_type == policy::safe) {
-                if (span.end - span.begin < (int) sizeof(T)) {
-                    span.end = nullptr;
-                    return;
-                }
+        struct operation<accumulator, T, void> {
+            static accumulator& invoke(accumulator& acc, T&) {
+                acc.value += serialized_size<T>();
+                return acc;
             }
-            else if constexpr (Span::policy_type == policy::throwing) {
-                if (span.end - span.begin < (int) sizeof(T)) {
-                    throw overflow_exception(sizeof(T), span.end - span.begin, category::out);
-                }
-            }
-            auto pVal = reinterpret_cast<std::byte const*>(&val);
-            std::copy(pVal, pVal + sizeof(T), span.begin);
-            span.begin += sizeof(T);
-        }
-        template <class T> template<class Span>
-        void default_binary_traits<T>::in(Span &span, T &val) {
-            if constexpr (Span::policy_type == policy::safe) {
-                if (span.end - span.begin < (int) sizeof(T)) {
-                    span.valid = nullptr;
-                    return;
-                }
-            }
-            else if constexpr (Span::policy_type == policy::throwing) {
-                if (span.end - span.begin < (int) sizeof(T)) {
-                    throw overflow_exception(sizeof(T), span.end - span.begin, category::in);
-                }
-            }
-            auto pVal = const_cast<std::byte*>(reinterpret_cast<std::byte const*>(&val));
-            std::copy(span.begin, span.begin + sizeof(T), pVal);
-            span.begin += sizeof(T);
-        }
-
-        template <class T>
-        struct default_traits<storage::binary, T> { using type = default_binary_traits<T>; };
-
-    }
-
-    // User definition
-
-    template <storage Storage, class T>
-    struct serializable_traits { using type = typename detail::default_traits<Storage, T>::type; };
-
-    // IO operators
-
-    namespace detail {
-        template <class Span, class T, int Category>
-        Span& make_io(Span& span, T& data) {
-            using traits_t = typename serializable_traits<Span::storage_type, T>::type;
-            if constexpr (Span::policy_type == policy::safe) {
-                if (span.end == nullptr) return span;
-            }
-            if constexpr (Category == category::out)
-                traits_t::out(span, data);
-            else traits_t::in(span, data);
-            return span;
         };
     }
 
-    template <class Span, class T>
-    auto operator<<(Span& span, T const& data)
-    -> return_if_t<
-            detail::has_category<Span, category::out>
-    ,Span>& {
-        return detail::make_io<Span, T, category::out>(span, const_cast<T&>(data));
-    };
+    // The operator '&' with no overload nor specialization.
+    // Picked after used-defined operators on serializable types.
 
-    template <class Span, class T>
-    auto operator>>(Span& span, T& data)
-    -> return_if_t<
-            detail::has_category<Span, category::in>
-    ,Span>& {
-        return detail::make_io<Span, T, category::in>(span, data);
-    };
-
-    // std::vector
-
-    namespace detail {
-        template<class T>
-        struct vector_binary_traits {
-            template<class Span>
-            static void out(Span &span, std::vector<T> const &val);
-
-            template<class Span>
-            static void in(Span &span, std::vector<T> &val);
+    namespace detail::span {
+        template <class Span, class T>
+        auto& operator&(Span& span, T& data) {
+            return operation<Span, T>::invoke(span, data);
         };
-
-        template<class T>
-        template<class Span>
-        void vector_binary_traits<T>::out(Span &span, std::vector<T> const &vec) {
-            span << static_cast<uint32_t>(vec.size());
-            for (auto const &val : vec) {
-                span << val;
-            }
-        }
-
-        template<class T>
-        template<class Span>
-        void vector_binary_traits<T>::in(Span &span, std::vector<T> &vec) {
-            uint32_t size;
-            span >> size;
-            vec.resize(size);
-            for (auto const &val : vec) {
-                span >> val;
-            }
-        }
     }
+
+    // Public operations implementation
+
+    // Input
 
     template <class T>
-    struct serializable_traits<storage::binary, std::vector<T>> {
-        using type = detail::vector_binary_traits<T>;
+    binary_ispan& operator>>(binary_ispan& span, T& data) {
+        reinterpret_cast<detail::span::input&>(span) & data;
+        return span;
+    };
+    template <class T>
+    binary_span& operator>>(binary_span& span, T& data) {
+        reinterpret_cast<detail::span::input&>(span) & data;
+        return span;
     };
 
-    // std::string
+    // Output
 
-    namespace detail {
-        struct string_binary_traits {
-            template<class Span>
-            static void out(Span &span, std::string const &str);
+    template <class T>
+    binary_ospan& operator<<(binary_ospan& span, T const& data) {
+        reinterpret_cast<detail::span::output&>(span) & const_cast<T&>(data);
+        return span;
+    };
+    template <class T>
+    binary_span& operator<<(binary_span& span, T const& data) {
+        reinterpret_cast<detail::span::output&>(span) & const_cast<T&>(data);
+        return span;
+    };
 
-            template<class Span>
-            static void in(Span &span, std::string &str);
-        };
+    // Runtime size
 
-        template<class Span>
-        void string_binary_traits::out(Span &span, std::string const &str) {
-            span << static_cast<uint32_t>(str.size());
-            std::copy(
-                    str.begin(),
-                    str.end(),
-                    reinterpret_cast<char*>(span.begin));
-            span.begin += str.size();
-        }
+    template <class T>
+    int serialized_size(T const& data) {
+        detail::span::accumulator accumulator{0};
+        accumulator & const_cast<T&>(data);
+        return accumulator.value;
+    };
 
-        template<class Span>
-        void string_binary_traits::in(Span &span, std::string &str) {
-            uint32_t size;
-            span >> size;
-            str.assign(
-                    reinterpret_cast<char const*>(span.begin),
-                    reinterpret_cast<char const*>(span.begin + size));
-            span.begin += str.size();
-        }
+    // Compile-time size
+
+    template <class T>
+    constexpr int serialized_size() {
+        using acccumulator_t = typename detail::span::constexpr_accumulator<0>;
+        using result_t = typename std::remove_reference_t<decltype(
+            std::declval<acccumulator_t&>() & std::declval<T&>()
+        )>;
+        return result_t::value;
     }
 
-    template <>
-    struct serializable_traits<storage::binary, std::string> {
-        using type = detail::string_binary_traits;
-    };
+    // Trivial types specializations
 
+    template <> constexpr bool is_trivially_serializable<int8_t>  = true;
+    template <> constexpr bool is_trivially_serializable<int16_t> = true;
+    template <> constexpr bool is_trivially_serializable<int32_t> = true;
+    template <> constexpr bool is_trivially_serializable<int64_t> = true;
+
+    template <> constexpr bool is_trivially_serializable<uint8_t>  = true;
+    template <> constexpr bool is_trivially_serializable<uint16_t> = true;
+    template <> constexpr bool is_trivially_serializable<uint32_t> = true;
+    template <> constexpr bool is_trivially_serializable<uint64_t> = true;
+
+    template <> constexpr bool is_trivially_serializable<bool>   = true;
+    template <> constexpr bool is_trivially_serializable<float>  = true;
+    template <> constexpr bool is_trivially_serializable<double> = true;
+
+    // Trivial types operations
+
+    namespace detail::span {
+        template <class T>
+        struct operation<input, T, std::enable_if_t<
+                is_trivially_serializable<T>
+        >> {
+            static input& invoke(input& span, T& data) {
+                data = *reinterpret_cast<T const*>(span.begin);
+                span.begin += serialized_size<T>();
+                return span;
+            }
+        };
+        template <class T>
+        struct operation<output, T, std::enable_if_t<
+                is_trivially_serializable<T>
+        >> {
+            static output& invoke(output& span, T& data) {
+                *reinterpret_cast<T*>(span.begin) = data;
+                span.begin += serialized_size<T>();
+                return span;
+            }
+        };
+        template <class T>
+        struct operation<constexpr_accumulator_tag, T, std::enable_if_t<
+                is_trivially_serializable<T>
+        >> {
+            static constexpr int invoke() { return sizeof(T); }
+        };
+    }
+/*
+    // Traits for containers
+
+    namespace detail::span {
+
+        template <class T, class SFINAE = void>
+        constexpr bool contains_trivial = false;
+        template <class T>
+        constexpr bool contains_trivial<T, std::enable_if_t<
+                !is_trivially_serializable<T> &&
+                is_trivially_serializable<T::value_type>
+        >> = true;
+
+
+        template <class T, class SFINAE = void>
+        constexpr bool contains_non_trivial = false;
+        template <class T>
+        constexpr bool contains_non_trivial<T, std::enable_if_t<
+                !is_trivially_serializable<T> &&
+                !is_trivially_serializable<T::value_type>
+        >> = true;
+
+        // TODO Requires resize()
+    }
+
+    static_assert(detail::span::contains_trivial<std::vector<char>>);
+
+    // Continuous storage operations
+
+    namespace detail::span {
+        template <class T>
+        struct operation<input, T, std::enable_if_t<
+                has_continuous_storage<T> &&
+                contains_trivial<T>
+        >> {
+            static input& invoke(input& span, T& data) {
+                uint32_t size;
+                span & size;
+                data.resize(size);
+                const auto serializedSize = serialized_size(data);
+                memcpy(data.data(), span.begin, (size_t) serializedSize);
+                span.begin += serializedSize;
+                return span;
+            }
+        };
+        template <class T>
+        struct operation<output, T, std::enable_if_t<
+                has_continuous_storage<T> &&
+                contains_trivial<T>
+        >> {
+            static output& invoke(output& span, T& data) {
+                uint32_t size = data.size();
+                span & size;
+                const auto serializedSize = serialized_size(data);
+                memcpy(span.begin, data.data(), (size_t) serializedSize);
+                span.begin += serializedSize;
+                return span;
+            }
+        };
+        template <class T>
+        struct operation<accumulator, T, std::enable_if_t<
+                has_continuous_storage<T> &&
+                contains_trivial<T>
+        >> {
+            static accumulator& invoke(accumulator& acc, T& data) {
+                acc.value += data.size() * sizeof(T);
+                return acc;
+            }
+        };
+    }
+*/
 }

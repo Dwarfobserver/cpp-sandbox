@@ -14,8 +14,6 @@ Here are the copyable includes, sorted by usefulness or interest :
 
  - slot_map : A structure which can add and remove elements from their id in O(1), and store them in contiguous memory. It is build upon std::vector.
  
- - serializer_span : A compile-time parametrizable span on non-owning memory for serialisation. Currently looking for a better API.
-
  - spsc_queue : Wait-free single producer & single consumer queue. This class do not check for overflow (it have a good chance to throw in debug mode).
 
  - transactional : A lock-free linked list storing successives versions of a value copied when modified. It allows to get the value without wait. Values destructions are deferred to a 'clear' function.
@@ -36,7 +34,7 @@ Here are the copyable includes, sorted by usefulness or interest :
 
 ### Incomplete includes :
 
- - serializer_span2 : A better version of serializer_span. Need a better API.
+ - serializer_span : Binary serialization functions using non-owned memory with a simple implementation for the client, and, if the type allows it, deducing the serialized size at compile-time.
 
  - type_traits : Few traits, for detecting iterators, iterables, and 'emplace-able' classes (with emplace_front, emplace_back or emplace). Need to recognize built_in arrays as iterables.
 

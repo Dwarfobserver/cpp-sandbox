@@ -20,8 +20,7 @@ set(SOURCE_FILES
         include/stack_allocator.hpp
         include/pointer_iterators.hpp
         include/flag_enums.hpp
-#       include/serializer_span.hpp
-        include/serializer_span2.hpp
+        include/serializer_span.hpp
         include/pod_vector.hpp
         include/terminal.hpp src/terminal.cpp
         include/make_string.hpp
@@ -43,8 +42,7 @@ set(SOURCE_FILES
         tests/tests_transactional.cpp
         tests/tests_fast_optional.cpp
         tests/tests_flag_enums.cpp
-#       tests/tests_serializer_span.cpp
-        tests/tests_serializer_span2.cpp
+        tests/tests_serializer_span.cpp
         tests/tests_pod_vector.cpp
         tests/tests_make_string.cpp
         tests/tests_stack_allocator.cpp
