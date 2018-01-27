@@ -90,7 +90,6 @@ TEST_CASE("serializer_span pair & tuple types", "[serializer_span]") {
 }
 
 TEST_CASE("serializer_span iterables", "[serializer_span]") {
-
     static_assert(sc::is_iterable<std::string>);
 
     std::byte storage[20];
