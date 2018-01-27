@@ -90,7 +90,7 @@ namespace sc {
         const auto i2 = (i + 1) & (capacity_ - 1);
 
 #ifndef NDEBUG
-        if (i2 == tail) throw std::runtime_error{"The producer has overflowed the spsc_queue."};
+        if (i2 == tail_) throw std::runtime_error{"The producer has overflowed the spsc_queue."};
         std::atomic_thread_fence(std::memory_order_seq_cst);
 #endif
 
