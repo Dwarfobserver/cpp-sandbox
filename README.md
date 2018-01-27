@@ -34,14 +34,15 @@ Here are the copyable includes, sorted by usefulness or interest :
 
 ### Incomplete includes :
 
- - serializer_span : Binary serialization functions using non-owned memory with a simple implementation for the client, and, if the type allows it, deducing the serialized size at compile-time.
+ - serializer_span : Binary serialization functions using non-owned memory with a simple implementation for the client, and, if the type allows it, deducing the serialized size at compile-time. The core is functional, but it need some basic types, optimizations and traits to be mature.
 
  - type_traits : Few traits, for detecting iterators, iterables, and 'emplace-able' classes (with emplace_front, emplace_back or emplace). Need to recognize built_in arrays as iterables.
 
  - mpsc_queue : Lock-free multiple producer & single (wait-free) consumer queue. This class is safe from overflow, but can then block producers. Probable culprit of rare slowdowns in tests.
 
- - terminal : Object representing the terminal, used to write, display informations,
- wait and interpret user commands.
+ - compact_map : A map built upon std::vector for cache efficiency (for iterations and search). It lacks some map functionality.
+
+ - terminal : Object representing the terminal, used to write, display information, wait and interpret user commands. It is almost empty for now.
 
  - lazy_ranges : A version of fluent_collections with lazy evaluation. Need better performances (mostly by removing intermediate optionals).
 

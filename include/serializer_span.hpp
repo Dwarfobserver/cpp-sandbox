@@ -53,14 +53,13 @@ namespace sc {
 
     template<class T>
     constexpr int serialized_size();
-
+/*
     template<class T>
     int serialized_size(T const &data);
+*/
+    /// Traits TODO
 
-    /// Traits
-    // TODO is_serializable, has_constexpr_serializable_size, is_serializer_span
-
-    // TODO template <class T, class SFINAE = void> constexpr bool is_serializable = false;
+    template<class T, class SFINAE = void> constexpr bool is_serializable = false;
     template<class T, class SFINAE = void> constexpr bool is_trivially_serializable = false;
 
     /// Implementation
@@ -85,17 +84,19 @@ namespace sc {
             static constexpr size_t value = N;
             static constexpr constexpr_accumulator instance{};
         };
-        struct constexpr_accumulator_tag {
-        };
+        struct constexpr_accumulator_tag {};
     }
 
-    // Operation type
-    // Compile-time size operation resolution by default
+    // Operation type. Usage : op<Span>::of<Span, T>::invoke(span, data);
 
     namespace detail::span {
         template<class Span, class T, class SFINAE = void>
         struct operation {
-            static constexpr auto &invoke(Span &, T &) {
+            static constexpr std::enable_if_t<
+                std::is_same_v<typename Span::is_constexpr_accumulator, std::true_type>,
+            constexpr_accumulator<Span::value + operation<constexpr_accumulator_tag, T>::invoke()>
+            > const&
+            invoke(Span &, T &) {
                 using serialization_assert = typename Span::is_constexpr_accumulator; // Fail means T is not serializable
                 constexpr auto size = Span::value + operation<constexpr_accumulator_tag, T>::invoke();
                 return constexpr_accumulator<size>::instance;
@@ -122,7 +123,6 @@ namespace sc {
         reinterpret_cast<detail::span::input &>(span) & data;
         return span;
     };
-
     template<class T>
     binary_span &operator>>(binary_span &span, T &data) {
         reinterpret_cast<detail::span::input &>(span) & data;
@@ -136,7 +136,6 @@ namespace sc {
         reinterpret_cast<detail::span::output &>(span) & const_cast<T &>(data);
         return span;
     };
-
     template<class T>
     binary_span &operator<<(binary_span &span, T const &data) {
         reinterpret_cast<detail::span::output &>(span) & const_cast<T &>(data);
@@ -158,7 +157,7 @@ namespace sc {
     constexpr int serialized_size() {
         using acccumulator_t = typename detail::span::constexpr_accumulator<0>;
         using result_t = typename std::remove_reference_t<decltype(
-        std::declval<acccumulator_t &>() & std::declval<T &>()
+            std::declval<acccumulator_t &>() & std::declval<T &>()
         )>;
         return result_t::value;
     }
@@ -167,8 +166,8 @@ namespace sc {
 /*
     template <class T>
     constexpr bool is_serializable<T, std::enable_if_t<
-            std::is_same_v<detail::span::input&,  decltype(std::declval<detail::span::input&>()  & std::declval<T&>)> &&
-            std::is_same_v<detail::span::output&, decltype(std::declval<detail::span::output&>() & std::declval<T&>)> &&
+            std::is_same_v<binary_span&, decltype(std::declval<binary_span&>() << std::declval<T const&>)> &&
+            std::is_same_v<binary_span&, decltype(std::declval<binary_span&>() >> std::declval<T&>)> &&
             std::is_same_v<int,          decltype(serialized_size(std::declval<T const&>))>
     >> = true;
 */
@@ -193,6 +192,7 @@ namespace sc {
     // Trivial types operations
 
     namespace detail::span {
+
         template<class T>
         struct operation<input, T, std::enable_if_t<
                 is_trivially_serializable<T>
@@ -214,6 +214,7 @@ namespace sc {
                 return span;
             }
         };
+
         template<class T>
         struct operation<accumulator, T, std::enable_if_t<
                 is_trivially_serializable<T>
@@ -223,6 +224,7 @@ namespace sc {
                 return acc;
             }
         };
+
         template<class T>
         struct operation<constexpr_accumulator_tag, T, std::enable_if_t<
                 is_trivially_serializable<T>
@@ -269,7 +271,7 @@ auto& operator&(Span& span, std::tuple<Ts...>& tuple) {
 namespace sc {
 
     // Iterables operations
-
+/*
     namespace detail::span {
         template <class T>
         struct operation<input, T, std::enable_if_t<
@@ -305,5 +307,5 @@ namespace sc {
             }
         };
     }
-
+*/
 }

@@ -12,13 +12,14 @@ namespace sc {
             class Key,
             class T,
             class Comparator = std::less<Key>,
-            class Allocator = std::allocator<std::pair<Key, T>>
+            class Allocator = std::allocator<std::pair<const Key, T>>
     >
     class compact_map { // TODO const Key, then const_cast to change them
+        using mut_value_type = std::pair<Key, T>;
     public:
         using key_type    = Key;
         using mapped_type = T;
-        using value_type  = std::pair<Key, T>;
+        using value_type  = std::pair<const Key, T>;
 
         using iterator               = typename std::vector<value_type, Allocator>::iterator;
         using const_iterator         = typename std::vector<value_type, Allocator>::const_iterator;
@@ -143,9 +144,9 @@ namespace sc {
         int i = size();
         vector_.emplace_back();
         while (i-- != position) {
-            vector_[i + 1] = std::move(vector_[i]);
+            reinterpret_cast<mut_value_type&>(vector_[i + 1]) = std::move(reinterpret_cast<mut_value_type&>(vector_[i]));
         }
-        vector_[position] = val;
+        reinterpret_cast<mut_value_type&>(vector_[position]) = reinterpret_cast<mut_value_type const&>(val);
         return { begin() + position, true };
     }
 
@@ -155,7 +156,7 @@ namespace sc {
         auto i = static_cast<int>(it - begin());
         const int size_ = size();
         while (++i != size_) {
-            vector_[i - 1] = std::move(vector_[i]);
+            reinterpret_cast<mut_value_type&>(vector_[i - 1]) = std::move(reinterpret_cast<mut_value_type&>(vector_[i]));
         }
         vector_.pop_back();
         return it;

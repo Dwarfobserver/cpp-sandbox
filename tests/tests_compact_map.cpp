@@ -18,15 +18,13 @@ TEST_CASE("compact_map basics", "[compact_map]") {
     REQUIRE(!map.insert({1, "existing key"s}).second);
 
     auto it = map.begin();
-    for (const auto& pair : map) {
-        std::cout << sc::make_string(*it) << std::endl;
-    }
-    /*
-    REQUIRE((it++)->second == "sire");
-    REQUIRE((it++)->second == "de");
-    REQUIRE((it++)->second == "nez");*/
-    REQUIRE(it == map.end());
+    REQUIRE(it->second == "sire");
+    REQUIRE((++it)->second == "de");
+    REQUIRE((++it)->second == "nez");
+    REQUIRE(++it == map.end());
 
     REQUIRE(map[4].empty());
+
+    REQUIRE(map.erase(map.find(2))->first == 3);
 }
 
