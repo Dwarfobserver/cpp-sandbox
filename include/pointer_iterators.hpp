@@ -42,6 +42,8 @@ namespace sc {
         pointer_iterator& operator-=(int shift) noexcept { ptr -= ALIGN * shift; return *this; }
         pointer_iterator  operator+(int shift) const noexcept { return pointer_iterator(ptr + ALIGN * shift); }
         pointer_iterator  operator-(int shift) const noexcept { return pointer_iterator(ptr - ALIGN * shift); }
+
+        difference_type operator-(pointer_iterator it) const noexcept { return (ptr - it.ptr) / ALIGN; }
     };
 
     template <class Collection, class T, size_t ALIGN = sizeof(T)>
@@ -79,6 +81,8 @@ namespace sc {
         const_pointer_iterator& operator-=(int shift) noexcept { ptr -= ALIGN * shift; return *this; }
         const_pointer_iterator  operator+(int shift) const noexcept { return const_pointer_iterator(ptr + ALIGN * shift); }
         const_pointer_iterator  operator-(int shift) const noexcept { return const_pointer_iterator(ptr - ALIGN * shift); }
+
+        difference_type operator-(const_pointer_iterator it) const noexcept { return (ptr - it.ptr) / ALIGN; }
     };
 
     template <class Collection, class T, size_t ALIGN = sizeof(T)>
@@ -116,6 +120,8 @@ namespace sc {
         reverse_pointer_iterator& operator-=(int shift) noexcept { ptr += ALIGN * shift; return *this; }
         reverse_pointer_iterator  operator+(int shift) const noexcept { return reverse_pointer_iterator(ptr - ALIGN * shift); }
         reverse_pointer_iterator  operator-(int shift) const noexcept { return reverse_pointer_iterator(ptr + ALIGN * shift); }
+
+        difference_type operator-(reverse_pointer_iterator it) const noexcept { return (it.ptr - ptr) / ALIGN; }
     };
 
     template <class Collection, class T, size_t ALIGN = sizeof(T)>
@@ -153,6 +159,8 @@ namespace sc {
         const_reverse_pointer_iterator& operator-=(int shift) noexcept { ptr += ALIGN * shift; return *this; }
         const_reverse_pointer_iterator  operator+(int shift) const noexcept { return const_reverse_pointer_iterator(ptr - ALIGN * shift); }
         const_reverse_pointer_iterator  operator-(int shift) const noexcept { return const_reverse_pointer_iterator(ptr + ALIGN * shift); }
+
+        difference_type operator-(const_reverse_pointer_iterator it) const noexcept { return (it.ptr - ptr) / ALIGN; }
     };
 
 }

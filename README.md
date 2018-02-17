@@ -22,6 +22,8 @@ Here are the copyable includes, sorted by usefulness or interest :
 
  - monad : Let compose functions for monad types, with the operator '|' in the namespace sc::monad_operator. These types can be added by specializing the 'monad_traits' template class. std::optional and containers (iterables and with emplace, emplace_back or emplace_front) have a monad_trait specialized.
 
+ - stack_array : Array of dynamic size created on the stack, with a similar interface to std::array.
+
  - stack_allocator : A fast allocator with an allocated area which can only grow.
 
  - pointer_iterators : Template class helpers to create pointer iterators for collections with continuous storage.

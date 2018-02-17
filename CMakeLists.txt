@@ -55,6 +55,7 @@ set(SOURCE_FILES
         tests/tests_movable_function.cpp
         tests/tests_compact_map.cpp
         tests/tests_thread_pool.cpp
+        tests/tests_stack_array.cpp
         )
 
 add_executable(Tests ${SOURCE_FILES})
