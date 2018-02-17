@@ -48,4 +48,8 @@ Here are the copyable includes, sorted by usefulness or interest :
 
  - block_allocator : A fast allocator for one object at a time of a fixed class. Need to accept other classes with acceptable alignment and size constraints.
 
+ - compact_map : A map stored in continuous memory (built on std::vector). std::bad_alloc in release mode.
+
  - eval : A function which compile and launch a process with the source code given. This is not cross-platform nor efficient, it does not have interoperability with another (or the current) process, and it's steps cannot be separated.
+
+ - thread_pool : A thread pool which can executes given tasks. orking, but miss some functionnalities.

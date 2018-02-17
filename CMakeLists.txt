@@ -29,6 +29,8 @@ set(SOURCE_FILES
         include/eval.hpp src/eval.cpp
         include/movable_function.hpp
         include/compact_map.hpp
+        include/thread_pool.hpp src/thread_pool.cpp
+        include/stack_array.hpp
 
         # Tests
 
@@ -52,6 +54,7 @@ set(SOURCE_FILES
         tests/tests_eval.cpp
         tests/tests_movable_function.cpp
         tests/tests_compact_map.cpp
+        tests/tests_thread_pool.cpp
         )
 
 add_executable(Tests ${SOURCE_FILES})
