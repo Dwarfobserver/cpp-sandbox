@@ -31,6 +31,8 @@ set(SOURCE_FILES
         include/compact_map.hpp
         include/thread_pool.hpp src/thread_pool.cpp
         include/stack_array.hpp
+        include/stack_tracker.hpp
+        include/bytes_literals.hpp
 
         # Tests
 

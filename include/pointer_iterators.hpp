@@ -5,7 +5,7 @@
 #include <iterator>
 
 
-namespace sc {
+namespace sc { // TODO Check std::distance with reverse iterators
 
     template <class Collection, class T, size_t ALIGN = sizeof(T)>
     class pointer_iterator {

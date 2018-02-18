@@ -27,6 +27,8 @@ namespace sc {
         using reverse_iterator = reverse_pointer_iterator<stack_array, T>;
         using const_reverse_iterator = const_reverse_pointer_iterator<stack_array, T>;
 
+        // TODO use private construct functions to allow non-inlined constructors (partially)
+
         SC_ALWAYS_INLINE stack_array(int size, uninitialized_tag);
         SC_ALWAYS_INLINE explicit stack_array(int size);
         SC_ALWAYS_INLINE stack_array(int size, T const& val);
@@ -34,12 +36,18 @@ namespace sc {
         template <class It>
         SC_ALWAYS_INLINE stack_array(It begin, It end);
 
+        SC_ALWAYS_INLINE stack_array(stack_array&& moved) noexcept(std::is_nothrow_move_constructible_v<T>);
+        SC_ALWAYS_INLINE stack_array(stack_array const& copied);
+
         ~stack_array() noexcept(std::is_nothrow_destructible_v<T>);
 
-        stack_array(stack_array&&)                 = delete;
-        stack_array(stack_array const&)            = delete;
         stack_array& operator=(stack_array&&)      = delete;
         stack_array& operator=(stack_array const&) = delete;
+
+        void* operator new(size_t)    = delete;
+        void* operator new[](size_t)  = delete;
+        void operator delete(void*)   = delete;
+        void operator delete[](void*) = delete;
 
         int size() const { return size_; }
 
@@ -110,6 +118,20 @@ namespace sc {
     }
 
     template<class T>
+    stack_array<T>::stack_array(stack_array&& moved) noexcept(std::is_nothrow_move_constructible_v<T>) :
+            stack_array(moved.size_, uninitialized_tag{})
+    {
+        for (int i = 0; i < size_; ++i) new (data_ + i) T(std::move(moved[i]));
+    }
+
+    template<class T>
+    stack_array<T>::stack_array(stack_array const& copied) :
+            stack_array(copied.size_, uninitialized_tag{})
+    {
+        for (int i = 0; i < size_; ++i) new (data_ + i) T(copied[i]);
+    }
+
+    template<class T>
     stack_array<T>::~stack_array() noexcept(std::is_nothrow_destructible_v<T>) {
         for (int i = 0; i < size_; ++i) (data_ + i)->~T();
     }
@@ -121,5 +143,4 @@ namespace sc {
                  "i = " + std::to_string(pos) + ", "
                  "size = " + std::to_string(size_) };
     }
-
 }
