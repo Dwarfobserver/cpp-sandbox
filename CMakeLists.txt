@@ -33,6 +33,7 @@ set(SOURCE_FILES
         include/stack_tracker.hpp src/stack_tracker.cpp
         include/bytes_units.hpp
         include/stack_allocator.hpp
+        include/arc_garbage_collector.hpp
 
         # Tests
 
@@ -59,6 +60,7 @@ set(SOURCE_FILES
         tests/tests_thread_pool.cpp
         tests/tests_stack_array.cpp
         tests/tests_stack_tracker.cpp
+        tests/tests_arc_garbage_collector.cpp
         )
 
 add_executable(Tests ${SOURCE_FILES})
