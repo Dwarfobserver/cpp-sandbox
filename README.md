@@ -31,8 +31,10 @@ Here are the copyable includes, sorted by usefulness or interest :
  - fast_optional : A template class used to define fast, compile-time optional with a type and the type value considered 'empty'.
 
  - fluent_collections : Functional-style wrapper of "collections", which are template classes with functions begin(), end() and insert(iterator) that behave gently. Not performant, see 'lazy_ranges' include.
+ 
+ - bytes_units : Contains an enumeration for ratios and literal operators for units between kilobytes and zettabytes.
 
- - flag_enmus : Namespace with bit operators for enum classes.
+ - flag_enums : Namespace with bit operators for enum classes.
 
 ### Incomplete includes :
 
@@ -42,16 +44,16 @@ Here are the copyable includes, sorted by usefulness or interest :
 
  - mpsc_queue : Lock-free multiple producer & single (wait-free) consumer queue. This class is safe from overflow, but can then block producers. Probable culprit of rare slowdowns in tests.
 
- - compact_map : A map built upon std::vector for cache efficiency (for iterations and search). It lacks some map functionality.
-
- - terminal : Object representing the terminal, used to write, display information, wait and interpret user commands. It is almost empty for now.
+ - compact_map : A map built upon std::vector for cache efficiency (for iterations and search). std::bad_alloc in release mode.
 
  - lazy_ranges : A version of fluent_collections with lazy evaluation. Need better performances (mostly by removing intermediate optionals).
 
  - block_allocator : A fast allocator for one object at a time of a fixed class. Need to accept other classes with acceptable alignment and size constraints.
 
- - compact_map : A map stored in continuous memory (built on std::vector). std::bad_alloc in release mode.
+ - thread_pool : A thread pool which can executes given tasks. Working, but miss some functionnalities. Triggered one segmentation fault.
+
+ - terminal : Object representing the terminal, used to write, display information, wait and interpret user commands. It is almost empty for now.
 
  - eval : A function which compile and launch a process with the source code given. This is not cross-platform nor efficient, it does not have interoperability with another (or the current) process, and it's steps cannot be separated.
 
- - thread_pool : A thread pool which can executes given tasks. orking, but miss some functionnalities.
+ - stack_tracker : Static functions : one initialize the tracker with the stack capacity and the other determine if a memory address belongs to the stack. Not precise, may fail.

@@ -2,6 +2,8 @@
 #include "catch.hpp"
 #include <stack_array.hpp>
 #include <numeric>
+#include <bytes_units.hpp>
+#include <stack_tracker.hpp>
 
 TEST_CASE("stack_array constructors", "[stack_array]") {
     sc::stack_array<int> zeroes(3);

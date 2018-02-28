@@ -17,7 +17,6 @@ set(SOURCE_FILES
         include/lazy_ranges.hpp
         include/transactional.hpp
         include/fast_optional.hpp
-        include/stack_allocator.hpp
         include/pointer_iterators.hpp
         include/flag_enums.hpp
         include/serializer_span.hpp
@@ -31,8 +30,9 @@ set(SOURCE_FILES
         include/compact_map.hpp
         include/thread_pool.hpp src/thread_pool.cpp
         include/stack_array.hpp
-        include/stack_tracker.hpp
-        include/bytes_literals.hpp
+        include/stack_tracker.hpp src/stack_tracker.cpp
+        include/bytes_units.hpp
+        include/stack_allocator.hpp
 
         # Tests
 
@@ -58,6 +58,7 @@ set(SOURCE_FILES
         tests/tests_compact_map.cpp
         tests/tests_thread_pool.cpp
         tests/tests_stack_array.cpp
+        tests/tests_stack_tracker.cpp
         )
 
 add_executable(Tests ${SOURCE_FILES})

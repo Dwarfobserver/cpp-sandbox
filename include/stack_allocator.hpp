@@ -1,95 +1,72 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cassert>
-#include <malloc.h>
-#include <type_traits>
-#include <pod_vector.hpp>
-#include <forward_list>
-#include <iostream>
+
+#include <memory>
 
 namespace sc {
 
-    template <bool DYNAMIC>
-    class stack_allocator_resource;
+    template <class T>
+    class stack_allocator;
 
-    namespace detail {
-        template <class T>
-        T* get_next_align(T* val) {
-            return reinterpret_cast<T*>(static_cast<uintptr_t>(
-                ((reinterpret_cast<uintptr_t>(val) + alignof(T) - 1) / alignof(T)) * alignof(T)
-            ));
-        }
-    }
-
-    // Static resource
-
-    template <>
-    class stack_allocator_resource<false> {
+    class stack_resource {
     public:
-        explicit stack_allocator_resource(int size) : stack_(size) {
-            ptr_ = stack_.data();
-        }
-        stack_allocator_resource(stack_allocator_resource&&) = delete;
-        stack_allocator_resource& operator=(stack_allocator_resource&&) = delete;
+        explicit stack_resource(int capacity) :
+                data_(std::make_unique<char[]>(static_cast<size_t>(capacity))),
+                size_(0),
+                capacity_(capacity)
+        {}
+        stack_resource(stack_resource&&) = delete;
 
-        template <class T>
-        T* allocate(size_t nb) {
-            auto ptr = detail::get_next_align(reinterpret_cast<T*>(ptr_));
-            ptr_ = reinterpret_cast<std::byte*>(ptr) + nb * sizeof(T);
-            assert(ptr_ <= stack_.data() + stack_.size());
+        void* push(int nb) {
+            if (nb > capacity_ - size_) throw std::runtime_error
+                { "stack_resource could not provide enough memory at push() call." };
+            void* ptr = data_.get() + size_;
+            size_ += nb;
             return ptr;
         }
 
-        int size() const { return static_cast<int>(ptr_ - stack_.data()); }
-        int capacity() const { return stack_.size(); }
-    private:
-        std::byte* ptr_;
-        sc::pod_vector<std::byte> stack_;
-    };
-
-    // Dynamic resource
-
-    template <>
-    class stack_allocator_resource<true> {
-    public:
-        explicit stack_allocator_resource(int size) :
-                chunkSize_(size),
-                chunkCount_(0)
-        {
-            stack_.emplace_front(chunkSize_);
-            ++chunkCount_;
-            ptr_ = stack_.front().data();
+        void pop(int nb) {
+            if (nb > size_) throw std::runtime_error
+                { "stack_resource could not free enough memory at pop() call." };
+            size_ -= nb;
         }
-        stack_allocator_resource(stack_allocator_resource&&) = delete;
-        stack_allocator_resource& operator=(stack_allocator_resource&&) = delete;
 
         template <class T>
-        T* allocate(size_t nb) {
-            auto ptr = detail::get_next_align(reinterpret_cast<T*>(ptr_));
-            ptr_ = reinterpret_cast<std::byte*>(ptr) + nb * sizeof(T);
-            if (ptr_ > stack_.front().data() + chunkSize_) {
-                stack_.emplace_front(chunkSize_);
-                ++chunkCount_;
-                ptr = detail::get_next_align(reinterpret_cast<T*>(stack_.front().data()));
-                ptr_ = reinterpret_cast<std::byte*>(ptr) + nb * sizeof(T);
-            }
-            return ptr;
+        stack_allocator<T> get_allocator() {
+            return stack_allocator<T>{ *this };
         }
 
-        int size() const { return chunkSize_ * (chunkCount_ - 1) + static_cast<int>(ptr_ - stack_.front().data()); }
-        int capacity() const { return chunkSize_ * chunkCount_; }
+        int capacity() const { return capacity_; }
+        int size() const     { return size_; }
     private:
-        int chunkSize_;
-        int chunkCount_;
-        std::byte* ptr_;
-        std::forward_list<sc::pod_vector<std::byte>> stack_;
+        std::unique_ptr<char[]> data_;
+        int size_;
+        const int capacity_;
     };
 
-    // Allocator
+    class stack_guard {
+    public:
+        explicit stack_guard(stack_resource& stack) :
+                stack_(stack),
+                index_(stack.size())
+        {}
+        stack_guard(stack_guard&&) = delete;
 
-    template <bool DYNAMIC, class T>
+        ~stack_guard() noexcept {
+            stack_.pop(stack_.size() - index_);
+        }
+
+        template <class T>
+        stack_allocator<T> get_allocator() { // TODO Track allocators in debug
+            return stack_.get_allocator<T>();
+        }
+    private:
+        stack_resource& stack_;
+        int index_;
+    };
+
+    template <class T>
     class stack_allocator {
     public:
         using value_type = T;
@@ -97,27 +74,27 @@ namespace sc {
         using propagate_on_container_copy_assignment = std::true_type;
         using is_always_equal = std::false_type;
 
-        explicit stack_allocator(stack_allocator_resource<DYNAMIC>& resource) : resource_(resource) {}
-
         template <class U>
-        struct rebind { using other = stack_allocator<DYNAMIC, U>; };
+        struct rebind { using other = stack_allocator<U>; };
 
-        T* allocate(size_t nb) {
-            return resource_.template allocate<T>(nb);
-        }
+        explicit stack_allocator(stack_resource& resource) : resource_(resource) {}
+        stack_allocator(stack_allocator&& allocator) noexcept = default;
+        stack_allocator(stack_allocator const& allocator) = default;
+        template <class U>
+        explicit stack_allocator(stack_allocator<U>& allocator) : resource_(allocator.resource_) {}
+
+        T* allocate(size_t nb) { return static_cast<int*>(resource_.push(sizeof(T) * nb)); }
         void deallocate(T *pChunk, size_t nb) {}
-
     private:
-        stack_allocator_resource<DYNAMIC>& resource_;
+        stack_resource& resource_;
     };
 
-    template <bool DYNAMIC, class T, class U>
-    bool operator==(stack_allocator<DYNAMIC, T> const& lhs, stack_allocator<DYNAMIC, U> const& rhs) {
+    template <class T, class U>
+    bool operator==(stack_allocator<T> const& lhs, stack_allocator<U> const& rhs) {
         return &lhs.resource_ == &rhs.resource_;
     };
-    template <bool DYNAMIC, class T, class U>
-    bool operator!=(stack_allocator<DYNAMIC, T> const& lhs, stack_allocator<DYNAMIC, U> const& rhs) {
+    template <class T, class U>
+    bool operator!=(stack_allocator<T> const& lhs, stack_allocator<U> const& rhs) {
         return &lhs.resource_ != &rhs.resource_;
     };
-
 }

@@ -3,33 +3,31 @@
 #include <stack_allocator.hpp>
 
 
-TEST_CASE("stack_allocator static", "[stack_allocator]") {
-    sc::stack_allocator_resource<false> resource(200);
-    sc::stack_allocator<false, int> allocator(resource);
+TEST_CASE("stack_allocator basics", "[stack_allocator]") {
+    using vector_t = std::vector<int, sc::stack_allocator<int>>;
 
-    std::vector<int, sc::stack_allocator<false, int>> vec(allocator);
+    sc::stack_resource resource(200);
+    REQUIRE(resource.capacity() == 200);
 
-    vec.reserve(4);
-    for (int i = 0; i < 4; ++i) {
-        vec.push_back(i);
+    resource.push(7);
+    {
+        sc::stack_guard lock{ resource };
+        vector_t vec{ lock.get_allocator<int>() };
+        vec.reserve(10);
+        {
+            bool caught = false;
+            try {
+                vec.reserve(resource.capacity() / sizeof(int));
+            }
+            catch(...) {
+                caught = true;
+            }
+            REQUIRE(caught);
+        }
+        REQUIRE(resource.size() == 7 + 10 * sizeof(int));
     }
-    auto vec2 = vec;
+    REQUIRE(resource.size() == 7);
 
-    REQUIRE(resource.size() == sizeof(int) * 8);
-}
-
-TEST_CASE("stack_allocator dynamic", "[stack_allocator]") {
-    sc::stack_allocator_resource<true> resource(20);
-    sc::stack_allocator<true, int> allocator(resource);
-
-    std::vector<int, sc::stack_allocator<true, int>> vec(allocator);
-
-    vec.reserve(4);
-    for (int i = 0; i < 4; ++i) {
-        vec.push_back(i);
-    }
-    auto vec2 = vec;
-
-    REQUIRE(resource.size() == 20 + 4 * sizeof(int));
-    REQUIRE(resource.capacity() == 20 * 2);
+    resource.pop(7);
+    REQUIRE(resource.size() == 0);
 }
