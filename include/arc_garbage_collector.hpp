@@ -36,20 +36,22 @@ namespace sc {
         template <class T, class Allocator = std::allocator<T>>
         detail::gc_factory<T, Allocator> factory(Allocator const& allocator = Allocator());
 
-        void collect();
-
-        int references_count() const;
+        bool collect();
+        bool async_collect(); // Skips the last element added to the garbage collector
     private:
         void add_node(detail::gc_node_header& header);
+        void collect_after(detail::gc_node_header* pPrev);
+        bool try_lock();
+        void unlock();
 
         detail::gc_node_header* nodes_;
-        int nodesCount_;
+        std::atomic_flag collecting_;
     };
 
     namespace detail {
         struct gc_node_header {
             gc_node_header* next_;
-            uint32_t refs_;
+            int refs_;
             gc_node_deleter_t deleter_;
 
             inline explicit gc_node_header(gc_node_deleter_t deleter);
@@ -75,7 +77,7 @@ namespace sc {
 
         template <class T, class Allocator>
         struct gc_factory {
-            using allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<T>;
+            using allocator_type = typename std::allocator_traits<Allocator>::template rebind_alloc<gc_node<T, Allocator>>;
             using allocator_traits = std::allocator_traits<allocator_type>;
 
             explicit gc_factory(::sc::arc_garbage_collector& gc, Allocator const& allocator);
@@ -93,22 +95,48 @@ namespace sc {
 
     // arc_garbage_collector
 
+    arc_garbage_collector::arc_garbage_collector() :
+            nodes_(nullptr),
+            collecting_(false)
+    {}
+
     template <class T, class Allocator>
     detail::gc_factory<T, Allocator> arc_garbage_collector::factory(Allocator const& allocator) {
         return detail::gc_factory<T, Allocator>{ *this, allocator };
     }
 
-    void arc_garbage_collector::collect() {
+    bool arc_garbage_collector::collect() {
+        if (!try_lock()) return false;
+
         // Used to set 'nodes_' when setting 'next_'
-        auto pPrev = reinterpret_cast<detail::gc_node_header*>(&nodes_);
-        auto pNode = nodes_;
+        collect_after(reinterpret_cast<detail::gc_node_header*>(&nodes_));
+
+        unlock();
+        return true;
+    }
+
+    bool arc_garbage_collector::async_collect() {
+        if (!try_lock()) return false;
+
+        if (nodes_ == nullptr) {
+            unlock();
+            return true;
+        }
+
+        collect_after(nodes_);
+
+        unlock();
+        return true;
+    }
+
+    void arc_garbage_collector::collect_after(detail::gc_node_header *pPrev) {
+        auto pNode = pPrev->next_;
 
         while (pNode != nullptr) {
             if (pNode->refs_ == 0) {
                 pPrev->next_ = pNode->next_;
                 pNode->deleter_(pNode);
                 pNode = pPrev->next_;
-                --nodesCount_;
             }
             else {
                 pPrev = pNode;
@@ -117,20 +145,18 @@ namespace sc {
         }
     }
 
-    int arc_garbage_collector::references_count() const {
-        return nodesCount_;
-    }
-
     void arc_garbage_collector::add_node(detail::gc_node_header &header) {
         header.next_ = nodes_;
         nodes_ = &header;
-        ++nodesCount_;
     }
 
-    arc_garbage_collector::arc_garbage_collector() :
-            nodes_(nullptr),
-            nodesCount_(0)
-    {}
+    bool arc_garbage_collector::try_lock() {
+        return !collecting_.test_and_set();
+    }
+
+    void arc_garbage_collector::unlock() {
+        collecting_.clear();
+    }
 
     // detail::gc_node_header
 
@@ -178,11 +204,10 @@ namespace sc {
         template <class T, class Allocator>
         template <class...Args>
         gc_ptr<T> gc_factory<T, Allocator>::make(Args&&...args) {
-            auto ptr = allocator_traits::allocate(allocator_, 1);
-            auto pNode = reinterpret_cast<gc_node<T, Allocator>*>(ptr);
-            auto pHeader = reinterpret_cast<gc_node_header*>(ptr);
-
+            auto pNode = allocator_traits::allocate(allocator_, 1);
             new (pNode) gc_node<T, allocator_type>(allocator_, std::forward<Args>(args)...);
+
+            auto pHeader = reinterpret_cast<gc_node_header*>(pNode);
             gc_.add_node(*pHeader);
             return gc_ptr<T>{ *pHeader };
         }
