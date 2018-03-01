@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include <unordered_set>
 
 namespace sc {
 
@@ -31,10 +30,8 @@ namespace sc {
     class arc_garbage_collector {
         template <class T, class Allocator>
         friend class detail::gc_factory;
-
-        using set_type = std::unordered_set<detail::gc_node_header*>;
     public:
-        arc_garbage_collector() = default;
+        arc_garbage_collector();
 
         template <class T, class Allocator = std::allocator<T>>
         detail::gc_factory<T, Allocator> factory(Allocator const& allocator = Allocator());
@@ -43,11 +40,15 @@ namespace sc {
 
         int references_count() const;
     private:
-        set_type nodes_;
+        void add_node(detail::gc_node_header& header);
+
+        detail::gc_node_header* nodes_;
+        int nodesCount_;
     };
 
     namespace detail {
         struct gc_node_header {
+            gc_node_header* next_;
             uint32_t refs_;
             gc_node_deleter_t deleter_;
 
@@ -98,26 +99,44 @@ namespace sc {
     }
 
     void arc_garbage_collector::collect() {
-        std::vector<set_type::const_iterator> iterators;
-        auto begin = nodes_.begin();
-        while (begin != nodes_.end()) {
-            if ((*begin)->refs_ == 0) iterators.push_back(begin);
-            ++begin;
-        }
-        for (auto& it : iterators) {
-            (*it)->deleter_(*it);
-            nodes_.erase(it);
+        // Used to set 'nodes_' when setting 'next_'
+        auto pPrev = reinterpret_cast<detail::gc_node_header*>(&nodes_);
+        auto pNode = nodes_;
+
+        while (pNode != nullptr) {
+            if (pNode->refs_ == 0) {
+                pPrev->next_ = pNode->next_;
+                pNode->deleter_(pNode);
+                pNode = pPrev->next_;
+                --nodesCount_;
+            }
+            else {
+                pPrev = pNode;
+                pNode = pNode->next_;
+            }
         }
     }
 
     int arc_garbage_collector::references_count() const {
-        return static_cast<int>(nodes_.size());
+        return nodesCount_;
     }
+
+    void arc_garbage_collector::add_node(detail::gc_node_header &header) {
+        header.next_ = nodes_;
+        nodes_ = &header;
+        ++nodesCount_;
+    }
+
+    arc_garbage_collector::arc_garbage_collector() :
+            nodes_(nullptr),
+            nodesCount_(0)
+    {}
 
     // detail::gc_node_header
 
     namespace detail {
         gc_node_header::gc_node_header(gc_node_deleter_t deleter) :
+                next_(nullptr),
                 refs_(0),
                 deleter_(deleter)
         {}
@@ -135,7 +154,6 @@ namespace sc {
         template <class T, class Allocator>
         void gc_node<T, Allocator>::deleter(gc_node_header* node) {
             auto pNode = reinterpret_cast<gc_node*>(node);
-            pNode->val_.~T();
             std::allocator_traits<Allocator>::destroy(pNode->allocator_, pNode);
         }
 
@@ -165,7 +183,7 @@ namespace sc {
             auto pHeader = reinterpret_cast<gc_node_header*>(ptr);
 
             new (pNode) gc_node<T, allocator_type>(allocator_, std::forward<Args>(args)...);
-            gc_.nodes_.insert(pHeader);
+            gc_.add_node(*pHeader);
             return gc_ptr<T>{ *pHeader };
         }
     }
