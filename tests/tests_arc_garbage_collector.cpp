@@ -9,12 +9,12 @@ TEST_CASE("arc_garbage_collector reference count", "[arc_garbage_collector]") {
 
     struct Dummy {
         int& flag_;
-        Dummy(int& flag) : flag_(flag) {}
+        explicit Dummy(int& flag) : flag_(flag) {}
         ~Dummy() noexcept { flag_ += 1; }
     };
 
-    sc::arc_garbage_collector gc;
     {
+        sc::arc_garbage_collector gc;
         std::vector<sc::gc_ptr<Dummy>> pDummies;
         for (int i = 0; i < 30; ++i) {
             auto ptr = gc.factory<Dummy>().make(dummies_dead);
@@ -27,7 +27,6 @@ TEST_CASE("arc_garbage_collector reference count", "[arc_garbage_collector]") {
         gc.async_collect();
         REQUIRE(dummies_dead == 10);
     }
-    gc.collect();
+    // gc destructor collect objects
     REQUIRE(dummies_dead == 30);
 }
-

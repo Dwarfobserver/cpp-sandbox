@@ -12,14 +12,14 @@ Here are the copyable includes, sorted by usefulness or interest :
 
  - make_string : A generic function which will attempt to conveft any type to a string. In particular, it works for tuples or pairs, iterables, and types with a to_string function (std::to_string i also tested).
 
+ - arc_garbage_collector :  A single thread garbage collector (the collect can be asynchronous) based on reference counting. It can use any allocator given, rebound to an internal node class. It performs only one allocation per object created. Do not works for over-aligned types.
+      
  - slot_map : A structure which can add and remove elements from their id in O(1), and store them in contiguous memory. It is build upon std::vector.
  
  - spsc_queue : Wait-free single producer & single consumer queue. This class do not check for overflow (it have a good chance to throw in debug mode).
 
  - transactional : A lock-free linked list storing successives versions of a value copied when modified. It allows to get the value without wait. Values destructions are deferred to a 'clear' function.
 
- - arc_garbage_collector :  A single thread garbage collector (the collect can be asynchronous) based on reference counting. It can use any allocator given, rebound to an internal node class. It performs only one allocation per object created.
-      
  - pod_vector : A fast version of std::vector which doesn't construct or destroy it's elements (useful for bytes array for exemple).
 
  - monad : Let compose functions for monad types, with the operator '|' in the namespace sc::monad_operator. These types can be added by specializing the 'monad_traits' template class. std::optional and containers (iterables and with emplace, emplace_back or emplace_front) have a monad_trait specialized.

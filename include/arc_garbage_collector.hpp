@@ -32,6 +32,7 @@ namespace sc {
         friend class detail::gc_factory;
     public:
         arc_garbage_collector();
+        ~arc_garbage_collector();
 
         template <class T, class Allocator = std::allocator<T>>
         detail::gc_factory<T, Allocator> factory(Allocator const& allocator = Allocator());
@@ -156,6 +157,10 @@ namespace sc {
 
     void arc_garbage_collector::unlock() {
         collecting_.clear();
+    }
+
+    arc_garbage_collector::~arc_garbage_collector() {
+        while (!collect()) {}
     }
 
     // detail::gc_node_header
