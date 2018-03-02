@@ -212,9 +212,9 @@ namespace sc {
             auto pNode = allocator_traits::allocate(allocator_, 1);
             new (pNode) gc_node<T, allocator_type>(allocator_, std::forward<Args>(args)...);
 
-            auto pHeader = reinterpret_cast<gc_node_header*>(pNode);
-            gc_.add_node(*pHeader);
-            return gc_ptr<T>{ *pHeader };
+            auto& pHeader = pNode->header_;
+            gc_.add_node(pHeader);
+            return gc_ptr<T>{ pHeader };
         }
     }
 
