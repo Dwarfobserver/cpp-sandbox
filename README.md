@@ -13,6 +13,8 @@ Here are the copyable includes, sorted by usefulness or interest :
  - make_string : A generic function which will attempt to conveft any type to a string. In particular, it works for tuples or pairs, iterables, and types with a to_string function (std::to_string i also tested).
 
  - arc_garbage_collector :  A single thread garbage collector (the collect can be asynchronous) based on reference counting. It can use any allocator given, rebound to an internal node class. It performs only one allocation per object created. Do not works for over-aligned types.
+ 
+ - compiler_hints : Macros for code optimisation and self-documentation make cross-platform for gcc, clang and msvc. Defines ASSERT(x, msg), LIKELY(x), UNLIKELY(x), UNREACHABLE(), RESTRICT, FORCE_INLINE and NO_INLINE for gcc, clang and msvc (tested on godbolt.org).
       
  - slot_map : A structure which can add and remove elements from their id in O(1), and store them in contiguous memory. It is build upon std::vector.
  
