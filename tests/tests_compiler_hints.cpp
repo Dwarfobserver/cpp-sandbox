@@ -15,10 +15,10 @@ NO_INLINE int get_currency_value(int type) {
     }
 }
 
-FORCE_INLINE int add_and_increment(int* RESTRICT i1, int* RESTRICT i2) {
-    ++(*i1);
-    ++(*i2);
-    return *i1 + *i2;
+FORCE_INLINE int increment_and_add(int& RESTRICT i1, int& RESTRICT i2) {
+    ++i1;
+    ++i2;
+    return i1 + i2;
 }
 
 TEST_CASE("compiler_hints demo", "[compiler_hints]") {
@@ -26,7 +26,7 @@ TEST_CASE("compiler_hints demo", "[compiler_hints]") {
 
     int int1 = 42;
     int int2 = 13;
-    REQUIRE(add_and_increment(&int1, &int2) == 43 + 14);
+    REQUIRE(increment_and_add(int1, int2) == 43 + 14);
 
     std::random_device rd;
     std::mt19937 rng(rd());

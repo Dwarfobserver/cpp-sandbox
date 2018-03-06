@@ -66,7 +66,7 @@ namespace sc::detail {
     #endif
 #else
         // TODO : __LINE__ info
-        #define UNREACHABLE() throw std::runtime_error{"UNREACHABLE() macro reached in debug mode"}
+        #define UNREACHABLE() ASSERT(false, "UNREACHABLE() macro reached in debug mode")
 #endif
 
 #if !defined(NDEBUG)
